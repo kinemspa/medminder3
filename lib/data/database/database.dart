@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
@@ -14,7 +15,9 @@ class AppDatabase extends _$AppDatabase {
 }
 
 QueryExecutor _openConnection() {
-  return NativeDatabase.createInBackground(
-    File(p.join(getApplicationDocumentsDirectory().toString(), 'medminder3.db')),
-  );
+  return LazyDatabase(() async {
+    final dbFolder = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dbFolder.path, 'medminder3.db'));
+    return NativeDatabase(file);
+  });
 }
