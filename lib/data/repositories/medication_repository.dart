@@ -10,7 +10,7 @@ class MedicationRepository {
     await _db.into(_db.medications).insert(med);
   }
 
-  Stream<List<MedicationData>> watchMedications() {
+  Stream<List<Medication>> watchMedications() {
     return _db.select(_db.medications).watch();
   }
 }

@@ -8,11 +8,11 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final medications = ref.watch(medicationRepositoryProvider).watchMedications();
     return Scaffold(
-      appBar: AppBar(title: Text('MedMinder3')),
+      appBar: AppBar(title: const Text('MedMinder3')),
       body: StreamBuilder(
         stream: medications,
-        builder: (context, AsyncSnapshot<List<MedicationData>> snapshot) {
-          if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+        builder: (context, AsyncSnapshot<List<Medication>> snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           return ListView(
             children: [
               Text('Upcoming Doses', style: Theme.of(context).textTheme.displayLarge),
@@ -31,7 +31,7 @@ class HomeScreen extends ConsumerWidget {
         },
       ),
       bottomNavigationBar: NavigationBar(
-        destinations: [
+        destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.medication), label: 'Medications'),
           NavigationDestination(icon: Icon(Icons.schedule), label: 'Schedules'),
