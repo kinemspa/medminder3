@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide Column;
 import '../../data/database/database.dart';
 import '../../data/repositories/medication_repository.dart';
 import '../../data/repositories/dose_log_repository.dart';
@@ -57,7 +57,7 @@ class HomeContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final medications = ref.watch(medicationRepositoryProvider).watchMedications();
-    final db = ref.watch(AppDatabaseProvider);
+    final db = ref.watch(appDatabaseProvider);
     return StreamBuilder(
       stream: medications,
       builder: (context, AsyncSnapshot<List<Medication>> snapshot) {

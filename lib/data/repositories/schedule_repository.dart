@@ -42,10 +42,10 @@ class ScheduleRepository {
   Future<void> _scheduleNotifications(int id, SchedulesCompanion schedule) async {
     final name = schedule.name.value ?? 'Schedule';
     final times = schedule.times.present ? jsonDecode(schedule.times.value!) as List : [];
-    if (schedule.frequency.value == 'cycle' && schedule.cycleOnDays.present && schedule.cycleOffDays.present) {
-      final cycleOnDays = schedule.cycleOnDays.value!;
-      final cycleOffDays = schedule.cycleOffDays.value!;
-      final cycleDuration = cycleOnDays + cycleOffDays;
+    if (schedule.frequency.value == 'onOff' && schedule.daysOn.present && schedule.daysOff.present) {
+      final daysOn = schedule.daysOn.value!;
+      final daysOff = schedule.daysOff.value!;
+      final cycleLength = daysOn + daysOff;
       final now = DateTime.now();
       for (var time in times) {
         final parts = time.split(':');
@@ -53,8 +53,8 @@ class ScheduleRepository {
         final minute = int.parse(parts[1]);
         // Schedule for the next 30 days to cover multiple cycles
         for (int dayOffset = 0; dayOffset < 30; dayOffset++) {
-          final dayInCycle = dayOffset % cycleDuration;
-          if (dayInCycle < cycleOnDays) { // On days
+          final dayInCycle = dayOffset % cycleLength;
+          if (dayInCycle < daysOn) { // Active days
             var scheduledTime = DateTime(now.year, now.month, now.day, hour, minute).add(Duration(days: dayOffset));
             if (scheduledTime.isBefore(now)) continue;
             final notificationId = '${id}_${time.hashCode}_${dayOffset}'.hashCode;

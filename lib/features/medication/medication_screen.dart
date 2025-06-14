@@ -241,7 +241,7 @@ void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
                 },
                 child: Text('Select Time: ${time.format(context)}'),
               ),
-              if (frequency == ScheduleFrequency.cycle) ...[
+              if (frequency == ScheduleFrequency.onOff) ...[
                 TextField(
                   decoration: const InputDecoration(labelText: 'Days On'),
                   keyboardType: TextInputType.number,
@@ -268,8 +268,8 @@ void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
                     name: Value(name),
                     frequency: Value(frequency.toString().split('.').last),
                     times: Value(jsonEncode(['${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'])),
-                    daysOn: frequency == ScheduleFrequency.cycle ? Value(daysOn) : const Value.absent(),
-                    daysOff: frequency == ScheduleFrequency.cycle ? Value(daysOff) : const Value.absent(),
+                    daysOn: frequency == ScheduleFrequency.onOff ? Value(daysOn) : const Value.absent(),
+                    daysOff: frequency == ScheduleFrequency.onOff ? Value(daysOff) : const Value.absent(),
                   );
                   ref.read(scheduleRepositoryProvider).addSchedule(schedule);
                   Navigator.pop(context);
@@ -331,7 +331,7 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
                 },
                 child: Text('Select Time: ${time.format(context)}'),
               ),
-              if (frequency == ScheduleFrequency.cycle) ...[
+              if (frequency == ScheduleFrequency.onOff) ...[
                 TextField(
                   decoration: const InputDecoration(labelText: 'Days On'),
                   keyboardType: TextInputType.number,
@@ -359,8 +359,8 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
                     name: Value(name),
                     frequency: Value(frequency.toString().split('.').last),
                     times: Value(jsonEncode(['${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'])),
-                    daysOn: frequency == ScheduleFrequency.cycle ? Value(daysOn) : const Value.absent(),
-                    daysOff: frequency == ScheduleFrequency.cycle ? Value(daysOff) : const Value.absent(),
+                    daysOn: frequency == ScheduleFrequency.onOff ? Value(daysOn) : const Value.absent(),
+                    daysOff: frequency == ScheduleFrequency.onOff ? Value(daysOff) : const Value.absent(),
                   );
                   ref.read(scheduleRepositoryProvider).updateSchedule(schedule.id, updatedSchedule);
                   Navigator.pop(context);

@@ -2,22 +2,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import '../database/database.dart';
 
-final doseLogRepositoryProvider = Provider((ref) => DoseLogRepository(ref.read));
+final doseLogRepositoryProvider = Provider((ref) => DoseLogRepository(ref.watch(appDatabaseProvider)));
+
+final appDatabaseProvider = Provider((ref) => AppDatabase());
 
 class DoseLogRepository {
-  final Reader _read;
+  final AppDatabase _db;
 
-  DoseLogRepository(this._read);
+  DoseLogRepository(this._db);
 
   Future<void> logDose(DoseLogsCompanion doseLog) async {
-    final db = _read(AppDatabaseProvider);
-    await db.into(db.doseLogs).insert(doseLog);
+    await _db.into(_db.doseLogs).insert(doseLog);
   }
 
   Stream<List<DoseLog>> watchDoseLogs(int doseId) {
-    final db = _read(AppDatabaseProvider);
-    return (db.select(db.doseLogs)..where((d) => d.doseId.equals(doseId))).watch();
+    return (_db.select(_db.doseLogs)..where((d) => d.doseId.equals(doseId))).watch();
   }
 }
-
-final AppDatabaseProvider = Provider((ref) => AppDatabase());
