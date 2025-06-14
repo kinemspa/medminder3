@@ -149,60 +149,65 @@ void showAddDoseDialog(BuildContext context, WidgetRef ref, int medicationId) {
 
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Add Dose'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            decoration: const InputDecoration(labelText: 'Dose Name'),
-            onChanged: (value) => name = value,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('Add Dose'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: const InputDecoration(labelText: 'Dose Name'),
+              onChanged: (value) => name = value,
+            ),
+            TextField(
+              decoration: const InputDecoration(labelText: 'Strength'),
+              keyboardType: TextInputType.number,
+              onChanged: (value) => strength = double.tryParse(value) ?? 0.01,
+            ),
+            DropdownButton<String>(
+              value: strengthUnit,
+              onChanged: (value) => setState(() => strengthUnit = value!),
+              items: [...AppConstants.tabletStrengthUnits, ...AppConstants.injectionStrengthUnits]
+                  .toSet()
+                  .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
+                  .toList(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
-          TextField(
-            decoration: const InputDecoration(labelText: 'Strength'),
-            keyboardType: TextInputType.number,
-            onChanged: (value) => strength = double.tryParse(value) ?? 0.01,
-          ),
-          DropdownButton<String>(
-            value: strengthUnit,
-            onChanged: (value) => strengthUnit = value!,
-            items: AppConstants.tabletStrengthUnits
-                .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
-                .toList(),
+          TextButton(
+            onPressed: () {
+              if (name.isNotEmpty && strength >= AppConstants.minValue && strength <= AppConstants.maxValue) {
+                final dose = DosesCompanion(
+                  medicationId: Value(medicationId),
+                  name: Value(name),
+                  strength: Value(strength),
+                  strengthUnit: Value(strengthUnit),
+                );
+                ref.read(doseRepositoryProvider).addDose(dose);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Save'),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () {
-            if (name.isNotEmpty && strength >= AppConstants.minValue && strength <= AppConstants.maxValue) {
-              final dose = DosesCompanion(
-                medicationId: Value(medicationId),
-                name: Value(name),
-                strength: Value(strength),
-                strengthUnit: Value(strengthUnit),
-              );
-              ref.read(doseRepositoryProvider).addDose(dose);
-              Navigator.pop(context);
-            }
-          },
-          child: const Text('Save'),
-        ),
-      ],
     ),
   );
 }
+
+// ... (previous imports unchanged)
 
 void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
   String name = '';
   ScheduleFrequency frequency = ScheduleFrequency.daily;
   TimeOfDay time = TimeOfDay.now();
-  int cycleOnDays = 1;
-  int cycleOffDays = 0;
+  int daysOn = 1;
+  int daysOff = 0;
 
   showDialog(
     context: context,
@@ -238,14 +243,14 @@ void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
               ),
               if (frequency == ScheduleFrequency.cycle) ...[
                 TextField(
-                  decoration: const InputDecoration(labelText: 'On Days'),
+                  decoration: const InputDecoration(labelText: 'Days On'),
                   keyboardType: TextInputType.number,
-                  onChanged: (value) => cycleOnDays = int.tryParse(value) ?? 1,
+                  onChanged: (value) => daysOn = int.tryParse(value) ?? 1,
                 ),
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Off Days'),
+                  decoration: const InputDecoration(labelText: 'Days Off'),
                   keyboardType: TextInputType.number,
-                  onChanged: (value) => cycleOffDays = int.tryParse(value) ?? 0,
+                  onChanged: (value) => daysOff = int.tryParse(value) ?? 0,
                 ),
               ],
             ],
@@ -263,8 +268,8 @@ void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
                     name: Value(name),
                     frequency: Value(frequency.toString().split('.').last),
                     times: Value(jsonEncode(['${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'])),
-                    cycleOnDays: frequency == ScheduleFrequency.cycle ? Value(cycleOnDays) : const Value.absent(),
-                    cycleOffDays: frequency == ScheduleFrequency.cycle ? Value(cycleOffDays) : const Value.absent(),
+                    daysOn: frequency == ScheduleFrequency.cycle ? Value(daysOn) : const Value.absent(),
+                    daysOff: frequency == ScheduleFrequency.cycle ? Value(daysOff) : const Value.absent(),
                   );
                   ref.read(scheduleRepositoryProvider).addSchedule(schedule);
                   Navigator.pop(context);
@@ -290,8 +295,8 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
     hour: int.parse(times.first.split(':')[0]),
     minute: int.parse(times.first.split(':')[1]),
   );
-  int cycleOnDays = schedule.cycleOnDays ?? 1;
-  int cycleOffDays = schedule.cycleOffDays ?? 0;
+  int daysOn = schedule.daysOn ?? 1;
+  int daysOff = schedule.daysOff ?? 0;
 
   showDialog(
     context: context,
@@ -328,16 +333,16 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
               ),
               if (frequency == ScheduleFrequency.cycle) ...[
                 TextField(
-                  decoration: const InputDecoration(labelText: 'On Days'),
+                  decoration: const InputDecoration(labelText: 'Days On'),
                   keyboardType: TextInputType.number,
-                  controller: TextEditingController(text: cycleOnDays.toString()),
-                  onChanged: (value) => cycleOnDays = int.tryParse(value) ?? 1,
+                  controller: TextEditingController(text: daysOn.toString()),
+                  onChanged: (value) => daysOn = int.tryParse(value) ?? 1,
                 ),
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Off Days'),
+                  decoration: const InputDecoration(labelText: 'Days Off'),
                   keyboardType: TextInputType.number,
-                  controller: TextEditingController(text: cycleOffDays.toString()),
-                  onChanged: (value) => cycleOffDays = int.tryParse(value) ?? 0,
+                  controller: TextEditingController(text: daysOff.toString()),
+                  onChanged: (value) => daysOff = int.tryParse(value) ?? 0,
                 ),
               ],
             ],
@@ -354,8 +359,8 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
                     name: Value(name),
                     frequency: Value(frequency.toString().split('.').last),
                     times: Value(jsonEncode(['${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'])),
-                    cycleOnDays: frequency == ScheduleFrequency.cycle ? Value(cycleOnDays) : const Value.absent(),
-                    cycleOffDays: frequency == ScheduleFrequency.cycle ? Value(cycleOffDays) : const Value.absent(),
+                    daysOn: frequency == ScheduleFrequency.cycle ? Value(daysOn) : const Value.absent(),
+                    daysOff: frequency == ScheduleFrequency.cycle ? Value(daysOff) : const Value.absent(),
                   );
                   ref.read(scheduleRepositoryProvider).updateSchedule(schedule.id, updatedSchedule);
                   Navigator.pop(context);
