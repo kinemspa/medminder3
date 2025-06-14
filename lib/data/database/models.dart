@@ -27,11 +27,14 @@ class Schedules extends Table {
   TextColumn get name => text()();
   TextColumn get frequency => text()();
   TextColumn get times => text().nullable()();
+  TextColumn get days => text().nullable()();
+  IntColumn get cycleOnDays => integer().nullable()();
+  IntColumn get cycleOffDays => integer().nullable()();
+  IntColumn get cycleDuration => integer().nullable()();
 }
 
 class Supplies extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
   RealColumn get quantity => real()();
-  TextColumn get unit => text()();
 }

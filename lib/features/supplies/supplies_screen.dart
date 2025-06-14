@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' hide Column; // Hide Column from drift
-import '../../core/constants.dart';
+import 'package:drift/drift.dart' hide Column;
 import '../../data/database/database.dart';
 import '../../data/repositories/supply_repository.dart';
 
@@ -28,7 +27,7 @@ class SuppliesScreen extends ConsumerWidget {
               final supply = snapshot.data![index];
               return ListTile(
                 title: Text(supply.name),
-                subtitle: Text('${supply.quantity} ${supply.unit}'),
+                subtitle: Text('Quantity: ${supply.quantity}'),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -58,7 +57,6 @@ class SuppliesScreen extends ConsumerWidget {
 void showAddSupplyDialog(BuildContext context, WidgetRef ref) {
   String name = '';
   double quantity = 1.0;
-  String unit = AppConstants.syringeSizes.first;
 
   showDialog(
     context: context,
@@ -76,13 +74,6 @@ void showAddSupplyDialog(BuildContext context, WidgetRef ref) {
             keyboardType: TextInputType.number,
             onChanged: (value) => quantity = double.tryParse(value) ?? 1.0,
           ),
-          DropdownButton<String>(
-            value: unit,
-            onChanged: (value) => unit = value!,
-            items: AppConstants.syringeSizes
-                .map((u) => DropdownMenuItem(value: u, child: Text(u)))
-                .toList(),
-          ),
         ],
       ),
       actions: [
@@ -96,7 +87,6 @@ void showAddSupplyDialog(BuildContext context, WidgetRef ref) {
               final supply = SuppliesCompanion(
                 name: Value(name),
                 quantity: Value(quantity),
-                unit: Value(unit),
               );
               ref.read(supplyRepositoryProvider).addSupply(supply);
               Navigator.pop(context);
@@ -112,7 +102,6 @@ void showAddSupplyDialog(BuildContext context, WidgetRef ref) {
 void showEditSupplyDialog(BuildContext context, WidgetRef ref, Supply supply) {
   String name = supply.name;
   double quantity = supply.quantity;
-  String unit = supply.unit;
 
   showDialog(
     context: context,
@@ -132,13 +121,6 @@ void showEditSupplyDialog(BuildContext context, WidgetRef ref, Supply supply) {
             controller: TextEditingController(text: quantity.toString()),
             onChanged: (value) => quantity = double.tryParse(value) ?? 1.0,
           ),
-          DropdownButton<String>(
-            value: unit,
-            onChanged: (value) => unit = value!,
-            items: AppConstants.syringeSizes
-                .map((u) => DropdownMenuItem(value: u, child: Text(u)))
-                .toList(),
-          ),
         ],
       ),
       actions: [
@@ -152,7 +134,6 @@ void showEditSupplyDialog(BuildContext context, WidgetRef ref, Supply supply) {
               final updatedSupply = SuppliesCompanion(
                 name: Value(name),
                 quantity: Value(quantity),
-                unit: Value(unit),
               );
               ref.read(supplyRepositoryProvider).updateSupply(supply.id, updatedSupply);
               Navigator.pop(context);
