@@ -16,7 +16,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
 
   // List of screens for navigation
-  static const List<Widget> _screens = [
+  static final List<Widget> _screens = [ // Remove 'const'
     HomeContent(),
     MedicationScreen(),
     ScheduleScreen(),

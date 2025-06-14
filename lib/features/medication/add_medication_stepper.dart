@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart'; // Add this import
+import 'package:drift/drift.dart' hide Column; // Hide Column from drift
 import '../../core/constants.dart';
 import '../../core/enums.dart';
 import '../../data/database/database.dart';
@@ -44,6 +44,7 @@ class _AddMedicationStepperState extends ConsumerState<AddMedicationStepper> {
 
   void _saveMedication() async {
     try {
+      print('Saving medication: $_name, $_type, $_strength, $_strengthUnit, $_quantity, $_volumeUnit, $_referenceDose');
       final med = MedicationsCompanion(
         name: Value(_name),
         type: Value(_type.toString().split('.').last),
@@ -54,8 +55,10 @@ class _AddMedicationStepperState extends ConsumerState<AddMedicationStepper> {
         referenceDose: Value(_referenceDose),
       );
       await ref.read(medicationRepositoryProvider).addMedication(med);
+      print('Medication saved successfully');
       Navigator.pop(context);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Save error: $e\n$stackTrace');
       setState(() => _errorMessage = 'Failed to save medication: $e');
     }
   }

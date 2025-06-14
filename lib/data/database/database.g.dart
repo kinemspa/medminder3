@@ -1047,8 +1047,60 @@ class $SchedulesTable extends Schedules
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _daysMeta = const VerificationMeta('days');
   @override
-  List<GeneratedColumn> get $columns => [id, doseId, name, frequency, times];
+  late final GeneratedColumn<String> days = GeneratedColumn<String>(
+    'days',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cycleOnDaysMeta = const VerificationMeta(
+    'cycleOnDays',
+  );
+  @override
+  late final GeneratedColumn<int> cycleOnDays = GeneratedColumn<int>(
+    'cycle_on_days',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cycleOffDaysMeta = const VerificationMeta(
+    'cycleOffDays',
+  );
+  @override
+  late final GeneratedColumn<int> cycleOffDays = GeneratedColumn<int>(
+    'cycle_off_days',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cycleDurationMeta = const VerificationMeta(
+    'cycleDuration',
+  );
+  @override
+  late final GeneratedColumn<int> cycleDuration = GeneratedColumn<int>(
+    'cycle_duration',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    doseId,
+    name,
+    frequency,
+    times,
+    days,
+    cycleOnDays,
+    cycleOffDays,
+    cycleDuration,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1094,6 +1146,39 @@ class $SchedulesTable extends Schedules
         times.isAcceptableOrUnknown(data['times']!, _timesMeta),
       );
     }
+    if (data.containsKey('days')) {
+      context.handle(
+        _daysMeta,
+        days.isAcceptableOrUnknown(data['days']!, _daysMeta),
+      );
+    }
+    if (data.containsKey('cycle_on_days')) {
+      context.handle(
+        _cycleOnDaysMeta,
+        cycleOnDays.isAcceptableOrUnknown(
+          data['cycle_on_days']!,
+          _cycleOnDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cycle_off_days')) {
+      context.handle(
+        _cycleOffDaysMeta,
+        cycleOffDays.isAcceptableOrUnknown(
+          data['cycle_off_days']!,
+          _cycleOffDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cycle_duration')) {
+      context.handle(
+        _cycleDurationMeta,
+        cycleDuration.isAcceptableOrUnknown(
+          data['cycle_duration']!,
+          _cycleDurationMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1123,6 +1208,22 @@ class $SchedulesTable extends Schedules
         DriftSqlType.string,
         data['${effectivePrefix}times'],
       ),
+      days: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}days'],
+      ),
+      cycleOnDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cycle_on_days'],
+      ),
+      cycleOffDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cycle_off_days'],
+      ),
+      cycleDuration: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cycle_duration'],
+      ),
     );
   }
 
@@ -1138,12 +1239,20 @@ class Schedule extends DataClass implements Insertable<Schedule> {
   final String name;
   final String frequency;
   final String? times;
+  final String? days;
+  final int? cycleOnDays;
+  final int? cycleOffDays;
+  final int? cycleDuration;
   const Schedule({
     required this.id,
     required this.doseId,
     required this.name,
     required this.frequency,
     this.times,
+    this.days,
+    this.cycleOnDays,
+    this.cycleOffDays,
+    this.cycleDuration,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1154,6 +1263,18 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     map['frequency'] = Variable<String>(frequency);
     if (!nullToAbsent || times != null) {
       map['times'] = Variable<String>(times);
+    }
+    if (!nullToAbsent || days != null) {
+      map['days'] = Variable<String>(days);
+    }
+    if (!nullToAbsent || cycleOnDays != null) {
+      map['cycle_on_days'] = Variable<int>(cycleOnDays);
+    }
+    if (!nullToAbsent || cycleOffDays != null) {
+      map['cycle_off_days'] = Variable<int>(cycleOffDays);
+    }
+    if (!nullToAbsent || cycleDuration != null) {
+      map['cycle_duration'] = Variable<int>(cycleDuration);
     }
     return map;
   }
@@ -1167,6 +1288,16 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       times: times == null && nullToAbsent
           ? const Value.absent()
           : Value(times),
+      days: days == null && nullToAbsent ? const Value.absent() : Value(days),
+      cycleOnDays: cycleOnDays == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cycleOnDays),
+      cycleOffDays: cycleOffDays == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cycleOffDays),
+      cycleDuration: cycleDuration == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cycleDuration),
     );
   }
 
@@ -1181,6 +1312,10 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       name: serializer.fromJson<String>(json['name']),
       frequency: serializer.fromJson<String>(json['frequency']),
       times: serializer.fromJson<String?>(json['times']),
+      days: serializer.fromJson<String?>(json['days']),
+      cycleOnDays: serializer.fromJson<int?>(json['cycleOnDays']),
+      cycleOffDays: serializer.fromJson<int?>(json['cycleOffDays']),
+      cycleDuration: serializer.fromJson<int?>(json['cycleDuration']),
     );
   }
   @override
@@ -1192,6 +1327,10 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       'name': serializer.toJson<String>(name),
       'frequency': serializer.toJson<String>(frequency),
       'times': serializer.toJson<String?>(times),
+      'days': serializer.toJson<String?>(days),
+      'cycleOnDays': serializer.toJson<int?>(cycleOnDays),
+      'cycleOffDays': serializer.toJson<int?>(cycleOffDays),
+      'cycleDuration': serializer.toJson<int?>(cycleDuration),
     };
   }
 
@@ -1201,12 +1340,22 @@ class Schedule extends DataClass implements Insertable<Schedule> {
     String? name,
     String? frequency,
     Value<String?> times = const Value.absent(),
+    Value<String?> days = const Value.absent(),
+    Value<int?> cycleOnDays = const Value.absent(),
+    Value<int?> cycleOffDays = const Value.absent(),
+    Value<int?> cycleDuration = const Value.absent(),
   }) => Schedule(
     id: id ?? this.id,
     doseId: doseId ?? this.doseId,
     name: name ?? this.name,
     frequency: frequency ?? this.frequency,
     times: times.present ? times.value : this.times,
+    days: days.present ? days.value : this.days,
+    cycleOnDays: cycleOnDays.present ? cycleOnDays.value : this.cycleOnDays,
+    cycleOffDays: cycleOffDays.present ? cycleOffDays.value : this.cycleOffDays,
+    cycleDuration: cycleDuration.present
+        ? cycleDuration.value
+        : this.cycleDuration,
   );
   Schedule copyWithCompanion(SchedulesCompanion data) {
     return Schedule(
@@ -1215,6 +1364,16 @@ class Schedule extends DataClass implements Insertable<Schedule> {
       name: data.name.present ? data.name.value : this.name,
       frequency: data.frequency.present ? data.frequency.value : this.frequency,
       times: data.times.present ? data.times.value : this.times,
+      days: data.days.present ? data.days.value : this.days,
+      cycleOnDays: data.cycleOnDays.present
+          ? data.cycleOnDays.value
+          : this.cycleOnDays,
+      cycleOffDays: data.cycleOffDays.present
+          ? data.cycleOffDays.value
+          : this.cycleOffDays,
+      cycleDuration: data.cycleDuration.present
+          ? data.cycleDuration.value
+          : this.cycleDuration,
     );
   }
 
@@ -1225,13 +1384,27 @@ class Schedule extends DataClass implements Insertable<Schedule> {
           ..write('doseId: $doseId, ')
           ..write('name: $name, ')
           ..write('frequency: $frequency, ')
-          ..write('times: $times')
+          ..write('times: $times, ')
+          ..write('days: $days, ')
+          ..write('cycleOnDays: $cycleOnDays, ')
+          ..write('cycleOffDays: $cycleOffDays, ')
+          ..write('cycleDuration: $cycleDuration')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, doseId, name, frequency, times);
+  int get hashCode => Object.hash(
+    id,
+    doseId,
+    name,
+    frequency,
+    times,
+    days,
+    cycleOnDays,
+    cycleOffDays,
+    cycleDuration,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1240,7 +1413,11 @@ class Schedule extends DataClass implements Insertable<Schedule> {
           other.doseId == this.doseId &&
           other.name == this.name &&
           other.frequency == this.frequency &&
-          other.times == this.times);
+          other.times == this.times &&
+          other.days == this.days &&
+          other.cycleOnDays == this.cycleOnDays &&
+          other.cycleOffDays == this.cycleOffDays &&
+          other.cycleDuration == this.cycleDuration);
 }
 
 class SchedulesCompanion extends UpdateCompanion<Schedule> {
@@ -1249,12 +1426,20 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
   final Value<String> name;
   final Value<String> frequency;
   final Value<String?> times;
+  final Value<String?> days;
+  final Value<int?> cycleOnDays;
+  final Value<int?> cycleOffDays;
+  final Value<int?> cycleDuration;
   const SchedulesCompanion({
     this.id = const Value.absent(),
     this.doseId = const Value.absent(),
     this.name = const Value.absent(),
     this.frequency = const Value.absent(),
     this.times = const Value.absent(),
+    this.days = const Value.absent(),
+    this.cycleOnDays = const Value.absent(),
+    this.cycleOffDays = const Value.absent(),
+    this.cycleDuration = const Value.absent(),
   });
   SchedulesCompanion.insert({
     this.id = const Value.absent(),
@@ -1262,6 +1447,10 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     required String name,
     required String frequency,
     this.times = const Value.absent(),
+    this.days = const Value.absent(),
+    this.cycleOnDays = const Value.absent(),
+    this.cycleOffDays = const Value.absent(),
+    this.cycleDuration = const Value.absent(),
   }) : doseId = Value(doseId),
        name = Value(name),
        frequency = Value(frequency);
@@ -1271,6 +1460,10 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     Expression<String>? name,
     Expression<String>? frequency,
     Expression<String>? times,
+    Expression<String>? days,
+    Expression<int>? cycleOnDays,
+    Expression<int>? cycleOffDays,
+    Expression<int>? cycleDuration,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1278,6 +1471,10 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
       if (name != null) 'name': name,
       if (frequency != null) 'frequency': frequency,
       if (times != null) 'times': times,
+      if (days != null) 'days': days,
+      if (cycleOnDays != null) 'cycle_on_days': cycleOnDays,
+      if (cycleOffDays != null) 'cycle_off_days': cycleOffDays,
+      if (cycleDuration != null) 'cycle_duration': cycleDuration,
     });
   }
 
@@ -1287,6 +1484,10 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     Value<String>? name,
     Value<String>? frequency,
     Value<String?>? times,
+    Value<String?>? days,
+    Value<int?>? cycleOnDays,
+    Value<int?>? cycleOffDays,
+    Value<int?>? cycleDuration,
   }) {
     return SchedulesCompanion(
       id: id ?? this.id,
@@ -1294,6 +1495,10 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
       name: name ?? this.name,
       frequency: frequency ?? this.frequency,
       times: times ?? this.times,
+      days: days ?? this.days,
+      cycleOnDays: cycleOnDays ?? this.cycleOnDays,
+      cycleOffDays: cycleOffDays ?? this.cycleOffDays,
+      cycleDuration: cycleDuration ?? this.cycleDuration,
     );
   }
 
@@ -1315,6 +1520,18 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
     if (times.present) {
       map['times'] = Variable<String>(times.value);
     }
+    if (days.present) {
+      map['days'] = Variable<String>(days.value);
+    }
+    if (cycleOnDays.present) {
+      map['cycle_on_days'] = Variable<int>(cycleOnDays.value);
+    }
+    if (cycleOffDays.present) {
+      map['cycle_off_days'] = Variable<int>(cycleOffDays.value);
+    }
+    if (cycleDuration.present) {
+      map['cycle_duration'] = Variable<int>(cycleDuration.value);
+    }
     return map;
   }
 
@@ -1325,7 +1542,11 @@ class SchedulesCompanion extends UpdateCompanion<Schedule> {
           ..write('doseId: $doseId, ')
           ..write('name: $name, ')
           ..write('frequency: $frequency, ')
-          ..write('times: $times')
+          ..write('times: $times, ')
+          ..write('days: $days, ')
+          ..write('cycleOnDays: $cycleOnDays, ')
+          ..write('cycleOffDays: $cycleOffDays, ')
+          ..write('cycleDuration: $cycleDuration')
           ..write(')'))
         .toString();
   }
@@ -1369,17 +1590,8 @@ class $SuppliesTable extends Supplies with TableInfo<$SuppliesTable, Supply> {
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
   @override
-  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
-    'unit',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [id, name, quantity, unit];
+  List<GeneratedColumn> get $columns => [id, name, quantity];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1411,14 +1623,6 @@ class $SuppliesTable extends Supplies with TableInfo<$SuppliesTable, Supply> {
     } else if (isInserting) {
       context.missing(_quantityMeta);
     }
-    if (data.containsKey('unit')) {
-      context.handle(
-        _unitMeta,
-        unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_unitMeta);
-    }
     return context;
   }
 
@@ -1440,10 +1644,6 @@ class $SuppliesTable extends Supplies with TableInfo<$SuppliesTable, Supply> {
         DriftSqlType.double,
         data['${effectivePrefix}quantity'],
       )!,
-      unit: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}unit'],
-      )!,
     );
   }
 
@@ -1457,20 +1657,13 @@ class Supply extends DataClass implements Insertable<Supply> {
   final int id;
   final String name;
   final double quantity;
-  final String unit;
-  const Supply({
-    required this.id,
-    required this.name,
-    required this.quantity,
-    required this.unit,
-  });
+  const Supply({required this.id, required this.name, required this.quantity});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     map['quantity'] = Variable<double>(quantity);
-    map['unit'] = Variable<String>(unit);
     return map;
   }
 
@@ -1479,7 +1672,6 @@ class Supply extends DataClass implements Insertable<Supply> {
       id: Value(id),
       name: Value(name),
       quantity: Value(quantity),
-      unit: Value(unit),
     );
   }
 
@@ -1492,7 +1684,6 @@ class Supply extends DataClass implements Insertable<Supply> {
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       quantity: serializer.fromJson<double>(json['quantity']),
-      unit: serializer.fromJson<String>(json['unit']),
     );
   }
   @override
@@ -1502,23 +1693,19 @@ class Supply extends DataClass implements Insertable<Supply> {
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'quantity': serializer.toJson<double>(quantity),
-      'unit': serializer.toJson<String>(unit),
     };
   }
 
-  Supply copyWith({int? id, String? name, double? quantity, String? unit}) =>
-      Supply(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        quantity: quantity ?? this.quantity,
-        unit: unit ?? this.unit,
-      );
+  Supply copyWith({int? id, String? name, double? quantity}) => Supply(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    quantity: quantity ?? this.quantity,
+  );
   Supply copyWithCompanion(SuppliesCompanion data) {
     return Supply(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
-      unit: data.unit.present ? data.unit.value : this.unit,
     );
   }
 
@@ -1527,54 +1714,46 @@ class Supply extends DataClass implements Insertable<Supply> {
     return (StringBuffer('Supply(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('quantity: $quantity, ')
-          ..write('unit: $unit')
+          ..write('quantity: $quantity')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, quantity, unit);
+  int get hashCode => Object.hash(id, name, quantity);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Supply &&
           other.id == this.id &&
           other.name == this.name &&
-          other.quantity == this.quantity &&
-          other.unit == this.unit);
+          other.quantity == this.quantity);
 }
 
 class SuppliesCompanion extends UpdateCompanion<Supply> {
   final Value<int> id;
   final Value<String> name;
   final Value<double> quantity;
-  final Value<String> unit;
   const SuppliesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.quantity = const Value.absent(),
-    this.unit = const Value.absent(),
   });
   SuppliesCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required double quantity,
-    required String unit,
   }) : name = Value(name),
-       quantity = Value(quantity),
-       unit = Value(unit);
+       quantity = Value(quantity);
   static Insertable<Supply> custom({
     Expression<int>? id,
     Expression<String>? name,
     Expression<double>? quantity,
-    Expression<String>? unit,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (quantity != null) 'quantity': quantity,
-      if (unit != null) 'unit': unit,
     });
   }
 
@@ -1582,13 +1761,11 @@ class SuppliesCompanion extends UpdateCompanion<Supply> {
     Value<int>? id,
     Value<String>? name,
     Value<double>? quantity,
-    Value<String>? unit,
   }) {
     return SuppliesCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       quantity: quantity ?? this.quantity,
-      unit: unit ?? this.unit,
     );
   }
 
@@ -1604,9 +1781,6 @@ class SuppliesCompanion extends UpdateCompanion<Supply> {
     if (quantity.present) {
       map['quantity'] = Variable<double>(quantity.value);
     }
-    if (unit.present) {
-      map['unit'] = Variable<String>(unit.value);
-    }
     return map;
   }
 
@@ -1615,8 +1789,7 @@ class SuppliesCompanion extends UpdateCompanion<Supply> {
     return (StringBuffer('SuppliesCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('quantity: $quantity, ')
-          ..write('unit: $unit')
+          ..write('quantity: $quantity')
           ..write(')'))
         .toString();
   }
@@ -2444,6 +2617,10 @@ typedef $$SchedulesTableCreateCompanionBuilder =
       required String name,
       required String frequency,
       Value<String?> times,
+      Value<String?> days,
+      Value<int?> cycleOnDays,
+      Value<int?> cycleOffDays,
+      Value<int?> cycleDuration,
     });
 typedef $$SchedulesTableUpdateCompanionBuilder =
     SchedulesCompanion Function({
@@ -2452,6 +2629,10 @@ typedef $$SchedulesTableUpdateCompanionBuilder =
       Value<String> name,
       Value<String> frequency,
       Value<String?> times,
+      Value<String?> days,
+      Value<int?> cycleOnDays,
+      Value<int?> cycleOffDays,
+      Value<int?> cycleDuration,
     });
 
 final class $$SchedulesTableReferences
@@ -2503,6 +2684,26 @@ class $$SchedulesTableFilterComposer
 
   ColumnFilters<String> get times => $composableBuilder(
     column: $table.times,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get days => $composableBuilder(
+    column: $table.days,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cycleOnDays => $composableBuilder(
+    column: $table.cycleOnDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cycleOffDays => $composableBuilder(
+    column: $table.cycleOffDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cycleDuration => $composableBuilder(
+    column: $table.cycleDuration,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2559,6 +2760,26 @@ class $$SchedulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get days => $composableBuilder(
+    column: $table.days,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cycleOnDays => $composableBuilder(
+    column: $table.cycleOnDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cycleOffDays => $composableBuilder(
+    column: $table.cycleOffDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cycleDuration => $composableBuilder(
+    column: $table.cycleDuration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$DosesTableOrderingComposer get doseId {
     final $$DosesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2603,6 +2824,24 @@ class $$SchedulesTableAnnotationComposer
 
   GeneratedColumn<String> get times =>
       $composableBuilder(column: $table.times, builder: (column) => column);
+
+  GeneratedColumn<String> get days =>
+      $composableBuilder(column: $table.days, builder: (column) => column);
+
+  GeneratedColumn<int> get cycleOnDays => $composableBuilder(
+    column: $table.cycleOnDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get cycleOffDays => $composableBuilder(
+    column: $table.cycleOffDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get cycleDuration => $composableBuilder(
+    column: $table.cycleDuration,
+    builder: (column) => column,
+  );
 
   $$DosesTableAnnotationComposer get doseId {
     final $$DosesTableAnnotationComposer composer = $composerBuilder(
@@ -2661,12 +2900,20 @@ class $$SchedulesTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String> frequency = const Value.absent(),
                 Value<String?> times = const Value.absent(),
+                Value<String?> days = const Value.absent(),
+                Value<int?> cycleOnDays = const Value.absent(),
+                Value<int?> cycleOffDays = const Value.absent(),
+                Value<int?> cycleDuration = const Value.absent(),
               }) => SchedulesCompanion(
                 id: id,
                 doseId: doseId,
                 name: name,
                 frequency: frequency,
                 times: times,
+                days: days,
+                cycleOnDays: cycleOnDays,
+                cycleOffDays: cycleOffDays,
+                cycleDuration: cycleDuration,
               ),
           createCompanionCallback:
               ({
@@ -2675,12 +2922,20 @@ class $$SchedulesTableTableManager
                 required String name,
                 required String frequency,
                 Value<String?> times = const Value.absent(),
+                Value<String?> days = const Value.absent(),
+                Value<int?> cycleOnDays = const Value.absent(),
+                Value<int?> cycleOffDays = const Value.absent(),
+                Value<int?> cycleDuration = const Value.absent(),
               }) => SchedulesCompanion.insert(
                 id: id,
                 doseId: doseId,
                 name: name,
                 frequency: frequency,
                 times: times,
+                days: days,
+                cycleOnDays: cycleOnDays,
+                cycleOffDays: cycleOffDays,
+                cycleDuration: cycleDuration,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -2754,14 +3009,12 @@ typedef $$SuppliesTableCreateCompanionBuilder =
       Value<int> id,
       required String name,
       required double quantity,
-      required String unit,
     });
 typedef $$SuppliesTableUpdateCompanionBuilder =
     SuppliesCompanion Function({
       Value<int> id,
       Value<String> name,
       Value<double> quantity,
-      Value<String> unit,
     });
 
 class $$SuppliesTableFilterComposer
@@ -2785,11 +3038,6 @@ class $$SuppliesTableFilterComposer
 
   ColumnFilters<double> get quantity => $composableBuilder(
     column: $table.quantity,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get unit => $composableBuilder(
-    column: $table.unit,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2817,11 +3065,6 @@ class $$SuppliesTableOrderingComposer
     column: $table.quantity,
     builder: (column) => ColumnOrderings(column),
   );
-
-  ColumnOrderings<String> get unit => $composableBuilder(
-    column: $table.unit,
-    builder: (column) => ColumnOrderings(column),
-  );
 }
 
 class $$SuppliesTableAnnotationComposer
@@ -2841,9 +3084,6 @@ class $$SuppliesTableAnnotationComposer
 
   GeneratedColumn<double> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
-
-  GeneratedColumn<String> get unit =>
-      $composableBuilder(column: $table.unit, builder: (column) => column);
 }
 
 class $$SuppliesTableTableManager
@@ -2877,24 +3117,16 @@ class $$SuppliesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<double> quantity = const Value.absent(),
-                Value<String> unit = const Value.absent(),
-              }) => SuppliesCompanion(
-                id: id,
-                name: name,
-                quantity: quantity,
-                unit: unit,
-              ),
+              }) => SuppliesCompanion(id: id, name: name, quantity: quantity),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required String name,
                 required double quantity,
-                required String unit,
               }) => SuppliesCompanion.insert(
                 id: id,
                 name: name,
                 quantity: quantity,
-                unit: unit,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
