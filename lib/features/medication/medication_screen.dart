@@ -208,8 +208,11 @@ void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
   TimeOfDay time = TimeOfDay.now();
   int daysOn = 1;
   int daysOff = 0;
-  int repeatEvery = 1;
   List<String> selectedDays = [];
+  bool enableCycle = false;
+  int cycleRunDuration = 1;
+  int cycleOffDuration = 1;
+  String cycleUnit = DurationUnit.days.toString().split('.').last;
 
   showDialog(
     context: context,
@@ -217,71 +220,90 @@ void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
       return StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Add Schedule'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: const InputDecoration(labelText: 'Schedule Name'),
-                onChanged: (value) => name = value,
-              ),
-              DropdownButton<ScheduleFrequency>(
-                value: frequency,
-                onChanged: (value) => setState(() => frequency = value!),
-                items: ScheduleFrequency.values
-                    .map((freq) => DropdownMenuItem(value: freq, child: Text(freq.toString().split('.').last)))
-                    .toList(),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final selectedTime = await showTimePicker(
-                    context: context,
-                    initialTime: time,
-                  );
-                  if (selectedTime != null) {
-                    setState(() => time = selectedTime);
-                  }
-                },
-                child: Text('Select Time: ${time.format(context)}'),
-              ),
-              if (frequency == ScheduleFrequency.onOff) ...[
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Days On'),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) => daysOn = int.tryParse(value) ?? 1,
+                  decoration: const InputDecoration(labelText: 'Schedule Name'),
+                  onChanged: (value) => name = value,
                 ),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Days Off'),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) => daysOff = int.tryParse(value) ?? 0,
-                ),
-              ],
-              if (frequency == ScheduleFrequency.cycling) ...[
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Repeat Every (days)'),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) => repeatEvery = int.tryParse(value) ?? 1,
-                ),
-              ],
-              if (frequency == ScheduleFrequency.weekly) ...[
-                Wrap(
-                  children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                      .map((day) => CheckboxListTile(
-                    title: Text(day),
-                    value: selectedDays.contains(day),
-                    onChanged: (bool? value) {
-                      setState(() {
-                        if (value == true) {
-                          selectedDays.add(day);
-                        } else {
-                          selectedDays.remove(day);
-                        }
-                      });
-                    },
-                  ))
+                DropdownButton<ScheduleFrequency>(
+                  value: frequency,
+                  onChanged: (value) => setState(() => frequency = value!),
+                  items: ScheduleFrequency.values
+                      .map((freq) => DropdownMenuItem(value: freq, child: Text(freq.toString().split('.').last)))
                       .toList(),
                 ),
+                TextButton(
+                  onPressed: () async {
+                    final selectedTime = await showTimePicker(
+                      context: context,
+                      initialTime: time,
+                    );
+                    if (selectedTime != null) {
+                      setState(() => time = selectedTime);
+                    }
+                  },
+                  child: Text('Select Time: ${time.format(context)}'),
+                ),
+                if (frequency == ScheduleFrequency.daysOnOff) ...[
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Days On'),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) => daysOn = int.tryParse(value) ?? 1,
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Days Off'),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) => daysOff = int.tryParse(value) ?? 0,
+                  ),
+                ],
+                if (frequency == ScheduleFrequency.daysOfWeek) ...[
+                  Wrap(
+                    children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                        .map((day) => CheckboxListTile(
+                      title: Text(day),
+                      value: selectedDays.contains(day),
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            selectedDays.add(day);
+                          } else {
+                            selectedDays.remove(day);
+                          }
+                        });
+                      },
+                    ))
+                        .toList(),
+                  ),
+                ],
+                CheckboxListTile(
+                  title: const Text('Enable Cycle'),
+                  value: enableCycle,
+                  onChanged: (value) => setState(() => enableCycle = value!),
+                ),
+                if (enableCycle) ...[
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Run Duration'),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) => cycleRunDuration = int.tryParse(value) ?? 1,
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Off Duration'),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) => cycleOffDuration = int.tryParse(value) ?? 1,
+                  ),
+                  DropdownButton<String>(
+                    value: cycleUnit,
+                    onChanged: (value) => setState(() => cycleUnit = value!),
+                    items: DurationUnit.values
+                        .map((unit) => DropdownMenuItem(value: unit.toString().split('.').last, child: Text(unit.toString().split('.').last)))
+                        .toList(),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
           actions: [
             TextButton(
@@ -296,10 +318,12 @@ void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
                     name: Value(name),
                     frequency: Value(frequency.toString().split('.').last),
                     times: Value(jsonEncode(['${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'])),
-                    daysOn: frequency == ScheduleFrequency.onOff ? Value(daysOn) : const Value.absent(),
-                    daysOff: frequency == ScheduleFrequency.onOff ? Value(daysOff) : const Value.absent(),
-                    repeatEvery: frequency == ScheduleFrequency.cycling ? Value(repeatEvery) : const Value.absent(),
-                    days: frequency == ScheduleFrequency.weekly ? Value(jsonEncode(selectedDays)) : const Value.absent(),
+                    daysOn: frequency == ScheduleFrequency.daysOnOff ? Value(daysOn) : const Value.absent(),
+                    daysOff: frequency == ScheduleFrequency.daysOnOff ? Value(daysOff) : const Value.absent(),
+                    days: frequency == ScheduleFrequency.daysOfWeek ? Value(jsonEncode(selectedDays)) : const Value.absent(),
+                    cycleRunDuration: enableCycle ? Value(cycleRunDuration) : const Value.absent(),
+                    cycleOffDuration: enableCycle ? Value(cycleOffDuration) : const Value.absent(),
+                    cycleUnit: enableCycle ? Value(cycleUnit) : const Value.absent(),
                   );
                   ref.read(scheduleRepositoryProvider).addSchedule(schedule);
                   Navigator.pop(context);
@@ -327,8 +351,11 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
   );
   int daysOn = schedule.daysOn ?? 1;
   int daysOff = schedule.daysOff ?? 0;
-  int repeatEvery = schedule.repeatEvery ?? 1;
   List<String> selectedDays = schedule.days != null ? (jsonDecode(schedule.days!) as List).cast<String>() : [];
+  bool enableCycle = schedule.cycleRunDuration != null;
+  int cycleRunDuration = schedule.cycleRunDuration ?? 1;
+  int cycleOffDuration = schedule.cycleOffDuration ?? 1;
+  String cycleUnit = schedule.cycleUnit ?? DurationUnit.days.toString().split('.').last;
 
   showDialog(
     context: context,
@@ -336,75 +363,95 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
       return StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Edit Schedule'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: const InputDecoration(labelText: 'Schedule Name'),
-                controller: TextEditingController(text: name),
-                onChanged: (value) => name = value,
-              ),
-              DropdownButton<ScheduleFrequency>(
-                value: frequency,
-                onChanged: (value) => setState(() => frequency = value!),
-                items: ScheduleFrequency.values
-                    .map((freq) => DropdownMenuItem(value: freq, child: Text(freq.toString().split('.').last)))
-                    .toList(),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final selectedTime = await showTimePicker(
-                    context: context,
-                    initialTime: time,
-                  );
-                  if (selectedTime != null) {
-                    setState(() => time = selectedTime);
-                  }
-                },
-                child: Text('Select Time: ${time.format(context)}'),
-              ),
-              if (frequency == ScheduleFrequency.onOff) ...[
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Days On'),
-                  keyboardType: TextInputType.number,
-                  controller: TextEditingController(text: daysOn.toString()),
-                  onChanged: (value) => daysOn = int.tryParse(value) ?? 1,
+                  decoration: const InputDecoration(labelText: 'Schedule Name'),
+                  controller: TextEditingController(text: name),
+                  onChanged: (value) => name = value,
                 ),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Days Off'),
-                  keyboardType: TextInputType.number,
-                  controller: TextEditingController(text: daysOff.toString()),
-                  onChanged: (value) => daysOff = int.tryParse(value) ?? 0,
-                ),
-              ],
-              if (frequency == ScheduleFrequency.cycling) ...[
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Repeat Every (days)'),
-                  keyboardType: TextInputType.number,
-                  controller: TextEditingController(text: repeatEvery.toString()),
-                  onChanged: (value) => repeatEvery = int.tryParse(value) ?? 1,
-                ),
-              ],
-              if (frequency == ScheduleFrequency.weekly) ...[
-                Wrap(
-                  children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                      .map((day) => CheckboxListTile(
-                    title: Text(day),
-                    value: selectedDays.contains(day),
-                    onChanged: (bool? value) {
-                      setState(() {
-                        if (value == true) {
-                          selectedDays.add(day);
-                        } else {
-                          selectedDays.remove(day);
-                        }
-                      });
-                    },
-                  ))
+                DropdownButton<ScheduleFrequency>(
+                  value: frequency,
+                  onChanged: (value) => setState(() => frequency = value!),
+                  items: ScheduleFrequency.values
+                      .map((freq) => DropdownMenuItem(value: freq, child: Text(freq.toString().split('.').last)))
                       .toList(),
                 ),
+                TextButton(
+                  onPressed: () async {
+                    final selectedTime = await showTimePicker(
+                      context: context,
+                      initialTime: time,
+                    );
+                    if (selectedTime != null) {
+                      setState(() => time = selectedTime);
+                    }
+                  },
+                  child: Text('Select Time: ${time.format(context)}'),
+                ),
+                if (frequency == ScheduleFrequency.daysOnOff) ...[
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Days On'),
+                    keyboardType: TextInputType.number,
+                    controller: TextEditingController(text: daysOn.toString()),
+                    onChanged: (value) => daysOn = int.tryParse(value) ?? 1,
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Days Off'),
+                    keyboardType: TextInputType.number,
+                    controller: TextEditingController(text: daysOff.toString()),
+                    onChanged: (value) => daysOff = int.tryParse(value) ?? 0,
+                  ),
+                ],
+                if (frequency == ScheduleFrequency.daysOfWeek) ...[
+                  Wrap(
+                    children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                        .map((day) => CheckboxListTile(
+                      title: Text(day),
+                      value: selectedDays.contains(day),
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            selectedDays.add(day);
+                          } else {
+                            selectedDays.remove(day);
+                          }
+                        });
+                      },
+                    ))
+                        .toList(),
+                  ),
+                ],
+                CheckboxListTile(
+                  title: const Text('Enable Cycle'),
+                  value: enableCycle,
+                  onChanged: (value) => setState(() => enableCycle = value!),
+                ),
+                if (enableCycle) ...[
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Run Duration'),
+                    keyboardType: TextInputType.number,
+                    controller: TextEditingController(text: cycleRunDuration.toString()),
+                    onChanged: (value) => cycleRunDuration = int.tryParse(value) ?? 1,
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Off Duration'),
+                    keyboardType: TextInputType.number,
+                    controller: TextEditingController(text: cycleOffDuration.toString()),
+                    onChanged: (value) => cycleOffDuration = int.tryParse(value) ?? 1,
+                  ),
+                  DropdownButton<String>(
+                    value: cycleUnit,
+                    onChanged: (value) => setState(() => cycleUnit = value!),
+                    items: DurationUnit.values
+                        .map((unit) => DropdownMenuItem(value: unit.toString().split('.').last, child: Text(unit.toString().split('.').last)))
+                        .toList(),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
           actions: [
             TextButton(
@@ -418,10 +465,12 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
                     name: Value(name),
                     frequency: Value(frequency.toString().split('.').last),
                     times: Value(jsonEncode(['${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'])),
-                    daysOn: frequency == ScheduleFrequency.onOff ? Value(daysOn) : const Value.absent(),
-                    daysOff: frequency == ScheduleFrequency.onOff ? Value(daysOff) : const Value.absent(),
-                    repeatEvery: frequency == ScheduleFrequency.cycling ? Value(repeatEvery) : const Value.absent(),
-                    days: frequency == ScheduleFrequency.weekly ? Value(jsonEncode(selectedDays)) : const Value.absent(),
+                    daysOn: frequency == ScheduleFrequency.daysOnOff ? Value(daysOn) : const Value.absent(),
+                    daysOff: frequency == ScheduleFrequency.daysOnOff ? Value(daysOff) : const Value.absent(),
+                    days: frequency == ScheduleFrequency.daysOfWeek ? Value(jsonEncode(selectedDays)) : const Value.absent(),
+                    cycleRunDuration: enableCycle ? Value(cycleRunDuration) : const Value.absent(),
+                    cycleOffDuration: enableCycle ? Value(cycleOffDuration) : const Value.absent(),
+                    cycleUnit: enableCycle ? Value(cycleUnit) : const Value.absent(),
                   );
                   ref.read(scheduleRepositoryProvider).updateSchedule(schedule.id, updatedSchedule);
                   Navigator.pop(context);
