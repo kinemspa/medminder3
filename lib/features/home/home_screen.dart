@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/medication_repository.dart';
+import 'package:drift/drift.dart';
 import '../../data/database/database.dart';
+import '../../data/repositories/medication_repository.dart';
+import '../../data/repositories/dose_log_repository.dart';
 import '../medication/medication_screen.dart';
 import '../schedule/schedule_screen.dart';
 import '../supplies/supplies_screen.dart';
@@ -15,8 +17,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
 
-  // List of screens for navigation
-  static final List<Widget> _screens = [ // Remove 'const'
+  static final List<Widget> _screens = [
     HomeContent(),
     MedicationScreen(),
     ScheduleScreen(),
@@ -56,6 +57,7 @@ class HomeContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final medications = ref.watch(medicationRepositoryProvider).watchMedications();
+    final db = ref.watch(AppDatabaseProvider);
     return StreamBuilder(
       stream: medications,
       builder: (context, AsyncSnapshot<List<Medication>> snapshot) {
@@ -83,9 +85,25 @@ class HomeContent extends ConsumerWidget {
               child: ListTile(
                 title: Text(med.name),
                 subtitle: Text('${med.strength} ${med.strengthUnit}'),
-                onTap: () {
-                  // TODO: Show dose dialog
-                },
+                trailing: IconButton(
+                  icon: const Icon(Icons.check),
+                  onPressed: () async {
+                    final doses = await (db.select(db.doses)..where((d) => d.medicationId.equals(med.id))).get();
+                    if (doses.isNotEmpty) {
+                      final dose = doses.first;
+                      final doseLog = DoseLogsCompanion(
+                        doseId: Value(dose.id),
+                        takenAt: Value(DateTime.now()),
+                        strength: Value(dose.strength),
+                        strengthUnit: Value(dose.strengthUnit),
+                      );
+                      ref.read(doseLogRepositoryProvider).logDose(doseLog);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Dose logged: ${med.name} at ${DateTime.now().toString().substring(11, 16)}')),
+                      );
+                    }
+                  },
+                ),
               ),
             )),
             Text('Summary', style: Theme.of(context).textTheme.displayLarge),
