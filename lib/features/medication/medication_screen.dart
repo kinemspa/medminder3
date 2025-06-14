@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' hide Column; // Hide Column from drift
 import '../../core/constants.dart';
 import '../../data/database/database.dart';
 import '../../data/repositories/medication_repository.dart';
