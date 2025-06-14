@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../data/database/database.dart';
+import '../../data/providers.dart';
 import '../../data/repositories/medication_repository.dart';
 import '../../data/repositories/dose_log_repository.dart';
 import '../medication/medication_screen.dart';
-import '../dose_history/dose_history_screen.dart';
 import '../schedule/schedule_screen.dart';
 import '../supplies/supplies_screen.dart';
+import '../dose_history/dose_history_screen.dart';
 import '../settings/settings_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {

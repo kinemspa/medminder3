@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart';
 import '../database/database.dart';
+import '../providers.dart';
 import '../../core/notifications.dart';
 
 final scheduleRepositoryProvider = Provider((ref) => ScheduleRepository(ref.watch(appDatabaseProvider)));
