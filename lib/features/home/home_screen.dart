@@ -5,6 +5,7 @@ import '../../data/database/database.dart';
 import '../../data/repositories/medication_repository.dart';
 import '../../data/repositories/dose_log_repository.dart';
 import '../medication/medication_screen.dart';
+import '../dose_history/dose_history_screen.dart';
 import '../schedule/schedule_screen.dart';
 import '../supplies/supplies_screen.dart';
 import '../settings/settings_screen.dart';
@@ -22,6 +23,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     MedicationScreen(),
     ScheduleScreen(),
     SuppliesScreen(),
+    DoseHistoryScreen(),
     SettingsScreen(),
   ];
 
@@ -44,6 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           NavigationDestination(icon: Icon(Icons.medication), label: 'Medications'),
           NavigationDestination(icon: Icon(Icons.schedule), label: 'Schedules'),
           NavigationDestination(icon: Icon(Icons.inventory), label: 'Supplies'),
+          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
           NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
@@ -106,32 +109,10 @@ class HomeContent extends ConsumerWidget {
                 ),
               ),
             )),
-            Text('Dose History', style: Theme.of(context).textTheme.displayLarge),
-            StreamBuilder(
-              stream: _fetchAllDoseLogs(db),
-              builder: (context, AsyncSnapshot<List<DoseLog>> logSnapshot) {
-                if (logSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (!logSnapshot.hasData || logSnapshot.data!.isEmpty) {
-                  return const Center(child: Text('No doses logged yet.'));
-                }
-                return Column(
-                  children: logSnapshot.data!.map((log) => ListTile(
-                    title: Text('Dose taken at ${log.takenAt.toString().substring(0, 16)}'),
-                    subtitle: Text('${log.strength} ${log.strengthUnit}'),
-                  )).toList(),
-                );
-              },
-            ),
             Text('Summary', style: Theme.of(context).textTheme.displayLarge),
           ],
         );
       },
     );
-  }
-
-  Stream<List<DoseLog>> _fetchAllDoseLogs(AppDatabase db) {
-    return db.select(db.doseLogs).watch();
   }
 }

@@ -15,7 +15,17 @@ class DoseLogRepository {
     await _db.into(_db.doseLogs).insert(doseLog);
   }
 
-  Stream<List<DoseLog>> watchDoseLogs(int doseId) {
-    return (_db.select(_db.doseLogs)..where((d) => d.doseId.equals(doseId))).watch();
+  Stream<List<DoseLog>> watchDoseLogs({int? doseId, DateTime? startDate, DateTime? endDate}) {
+    var query = _db.select(_db.doseLogs);
+    if (doseId != null) {
+      query = query..where((log) => log.doseId.equals(doseId));
+    }
+    if (startDate != null) {
+      query = query..where((log) => log.takenAt.isBiggerOrEqualValue(startDate));
+    }
+    if (endDate != null) {
+      query = query..where((log) => log.takenAt.isSmallerOrEqualValue(endDate));
+    }
+    return query.watch();
   }
 }

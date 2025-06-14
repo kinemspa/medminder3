@@ -28,13 +28,21 @@ class Schedules extends Table {
   TextColumn get frequency => text()();
   TextColumn get times => text().nullable()();
   TextColumn get days => text().nullable()();
-  IntColumn get cycleOnDays => integer().nullable()();
-  IntColumn get cycleOffDays => integer().nullable()();
-  IntColumn get cycleDuration => integer().nullable()();
+  IntColumn get daysOn => integer().nullable()();
+  IntColumn get daysOff => integer().nullable()();
 }
 
 class Supplies extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
   RealColumn get quantity => real()();
+}
+
+class DoseLogs extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get doseId => integer().references(Doses, #id)();
+  DateTimeColumn get takenAt => dateTime()();
+  RealColumn get strength => real()();
+  TextColumn get strengthUnit => text()();
+  TextColumn get notes => text().nullable()();
 }
