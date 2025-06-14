@@ -106,10 +106,32 @@ class HomeContent extends ConsumerWidget {
                 ),
               ),
             )),
+            Text('Dose History', style: Theme.of(context).textTheme.displayLarge),
+            StreamBuilder(
+              stream: _fetchAllDoseLogs(db),
+              builder: (context, AsyncSnapshot<List<DoseLog>> logSnapshot) {
+                if (logSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!logSnapshot.hasData || logSnapshot.data!.isEmpty) {
+                  return const Center(child: Text('No doses logged yet.'));
+                }
+                return Column(
+                  children: logSnapshot.data!.map((log) => ListTile(
+                    title: Text('Dose taken at ${log.takenAt.toString().substring(0, 16)}'),
+                    subtitle: Text('${log.strength} ${log.strengthUnit}'),
+                  )).toList(),
+                );
+              },
+            ),
             Text('Summary', style: Theme.of(context).textTheme.displayLarge),
           ],
         );
       },
     );
+  }
+
+  Stream<List<DoseLog>> _fetchAllDoseLogs(AppDatabase db) {
+    return db.select(db.doseLogs).watch();
   }
 }
