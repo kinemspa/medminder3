@@ -16,13 +16,17 @@ class MedicationRepository {
   }
 
   Future<void> seedSampleData() async {
-    final sampleMed = MedicationsCompanion(
-      name: const Value('Aspirin'),
-      type: const Value('tablet'),
-      strength: const Value(100.0),
-      strengthUnit: const Value('mg'),
-      quantity: const Value(50.0),
-    );
-    await addMedication(sampleMed);
+    // Check if database is empty
+    final count = await _db.select(_db.medications).get().then((rows) => rows.length);
+    if (count == 0) {
+      final sampleMed = MedicationsCompanion(
+        name: const Value('Aspirin'),
+        type: const Value('tablet'),
+        strength: const Value(100.0),
+        strengthUnit: const Value('mg'),
+        quantity: const Value(50.0),
+      );
+      await addMedication(sampleMed);
+    }
   }
 }
