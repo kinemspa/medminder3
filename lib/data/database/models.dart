@@ -27,9 +27,10 @@ class Schedules extends Table {
   TextColumn get name => text()();
   TextColumn get frequency => text()();
   TextColumn get times => text().nullable()();
-  TextColumn get days => text().nullable()();
+  TextColumn get days => text().nullable()(); // JSON-encoded weekdays for weekly
   IntColumn get daysOn => integer().nullable()();
   IntColumn get daysOff => integer().nullable()();
+  IntColumn get repeatEvery => integer().nullable()(); // For cycling (e.g., every 2 days)
 }
 
 class Supplies extends Table {

@@ -42,20 +42,63 @@ class ScheduleRepository {
   Future<void> _scheduleNotifications(int id, SchedulesCompanion schedule) async {
     final name = schedule.name.value ?? 'Schedule';
     final times = schedule.times.present ? jsonDecode(schedule.times.value!) as List : [];
+    final now = DateTime.now();
+
     if (schedule.frequency.value == 'onOff' && schedule.daysOn.present && schedule.daysOff.present) {
       final daysOn = schedule.daysOn.value!;
       final daysOff = schedule.daysOff.value!;
       final cycleLength = daysOn + daysOff;
-      final now = DateTime.now();
       for (var time in times) {
         final parts = time.split(':');
         final hour = int.parse(parts[0]);
         final minute = int.parse(parts[1]);
-        // Schedule for the next 30 days to cover multiple cycles
+        // Schedule for 30 days
         for (int dayOffset = 0; dayOffset < 30; dayOffset++) {
           final dayInCycle = dayOffset % cycleLength;
-          if (dayInCycle < daysOn) { // Active days
+          if (dayInCycle < daysOn) {
             var scheduledTime = DateTime(now.year, now.month, now.day, hour, minute).add(Duration(days: dayOffset));
+            if (scheduledTime.isBefore(now)) continue;
+            final notificationId = '${id}_${time.hashCode}_${dayOffset}'.hashCode;
+            await NotificationService.scheduleNotification(
+              'Dose Reminder: $name',
+              'Time to take $name',
+              scheduledTime,
+              notificationId,
+            );
+          }
+        }
+      }
+    } else if (schedule.frequency.value == 'cycling' && schedule.repeatEvery.present) {
+      final repeatEvery = schedule.repeatEvery.value!;
+      for (var time in times) {
+        final parts = time.split(':');
+        final hour = int.parse(parts[0]);
+        final minute = int.parse(parts[1]);
+        // Schedule for 30 days, every repeatEvery days
+        for (int dayOffset = 0; dayOffset < 30; dayOffset += repeatEvery) {
+          var scheduledTime = DateTime(now.year, now.month, now.day, hour, minute).add(Duration(days: dayOffset));
+          if (scheduledTime.isBefore(now)) continue;
+          final notificationId = '${id}_${time.hashCode}_${dayOffset}'.hashCode;
+          await NotificationService.scheduleNotification(
+            'Dose Reminder: $name',
+            'Time to take $name',
+            scheduledTime,
+            notificationId,
+          );
+        }
+      }
+    } else if (schedule.frequency.value == 'weekly' && schedule.days.present) {
+      final days = jsonDecode(schedule.days.value!) as List;
+      for (var time in times) {
+        final parts = time.split(':');
+        final hour = int.parse(parts[0]);
+        final minute = int.parse(parts[1]);
+        // Schedule for 30 days, on specified weekdays
+        for (int dayOffset = 0; dayOffset < 30; dayOffset++) {
+          final date = now.add(Duration(days: dayOffset));
+          final weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.weekday % 7];
+          if (days.contains(weekday)) {
+            var scheduledTime = DateTime(date.year, date.month, date.day, hour, minute);
             if (scheduledTime.isBefore(now)) continue;
             final notificationId = '${id}_${time.hashCode}_${dayOffset}'.hashCode;
             await NotificationService.scheduleNotification(
@@ -72,7 +115,6 @@ class ScheduleRepository {
         final parts = time.split(':');
         final hour = int.parse(parts[0]);
         final minute = int.parse(parts[1]);
-        final now = DateTime.now();
         var scheduledTime = DateTime(now.year, now.month, now.day, hour, minute);
         if (scheduledTime.isBefore(now) || scheduledTime.isAtSameMomentAs(now)) {
           scheduledTime = scheduledTime.add(const Duration(days: 1));

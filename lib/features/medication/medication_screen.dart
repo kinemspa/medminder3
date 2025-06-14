@@ -208,6 +208,8 @@ void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
   TimeOfDay time = TimeOfDay.now();
   int daysOn = 1;
   int daysOff = 0;
+  int repeatEvery = 1;
+  List<String> selectedDays = [];
 
   showDialog(
     context: context,
@@ -253,6 +255,32 @@ void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
                   onChanged: (value) => daysOff = int.tryParse(value) ?? 0,
                 ),
               ],
+              if (frequency == ScheduleFrequency.cycling) ...[
+                TextField(
+                  decoration: const InputDecoration(labelText: 'Repeat Every (days)'),
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) => repeatEvery = int.tryParse(value) ?? 1,
+                ),
+              ],
+              if (frequency == ScheduleFrequency.weekly) ...[
+                Wrap(
+                  children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                      .map((day) => CheckboxListTile(
+                    title: Text(day),
+                    value: selectedDays.contains(day),
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value == true) {
+                          selectedDays.add(day);
+                        } else {
+                          selectedDays.remove(day);
+                        }
+                      });
+                    },
+                  ))
+                      .toList(),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -270,6 +298,8 @@ void showAddScheduleDialog(BuildContext context, WidgetRef ref, int doseId) {
                     times: Value(jsonEncode(['${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'])),
                     daysOn: frequency == ScheduleFrequency.onOff ? Value(daysOn) : const Value.absent(),
                     daysOff: frequency == ScheduleFrequency.onOff ? Value(daysOff) : const Value.absent(),
+                    repeatEvery: frequency == ScheduleFrequency.cycling ? Value(repeatEvery) : const Value.absent(),
+                    days: frequency == ScheduleFrequency.weekly ? Value(jsonEncode(selectedDays)) : const Value.absent(),
                   );
                   ref.read(scheduleRepositoryProvider).addSchedule(schedule);
                   Navigator.pop(context);
@@ -297,6 +327,8 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
   );
   int daysOn = schedule.daysOn ?? 1;
   int daysOff = schedule.daysOff ?? 0;
+  int repeatEvery = schedule.repeatEvery ?? 1;
+  List<String> selectedDays = schedule.days != null ? (jsonDecode(schedule.days!) as List).cast<String>() : [];
 
   showDialog(
     context: context,
@@ -345,6 +377,33 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
                   onChanged: (value) => daysOff = int.tryParse(value) ?? 0,
                 ),
               ],
+              if (frequency == ScheduleFrequency.cycling) ...[
+                TextField(
+                  decoration: const InputDecoration(labelText: 'Repeat Every (days)'),
+                  keyboardType: TextInputType.number,
+                  controller: TextEditingController(text: repeatEvery.toString()),
+                  onChanged: (value) => repeatEvery = int.tryParse(value) ?? 1,
+                ),
+              ],
+              if (frequency == ScheduleFrequency.weekly) ...[
+                Wrap(
+                  children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                      .map((day) => CheckboxListTile(
+                    title: Text(day),
+                    value: selectedDays.contains(day),
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value == true) {
+                          selectedDays.add(day);
+                        } else {
+                          selectedDays.remove(day);
+                        }
+                      });
+                    },
+                  ))
+                      .toList(),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -361,6 +420,8 @@ void showEditScheduleDialog(BuildContext context, WidgetRef ref, Schedule schedu
                     times: Value(jsonEncode(['${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'])),
                     daysOn: frequency == ScheduleFrequency.onOff ? Value(daysOn) : const Value.absent(),
                     daysOff: frequency == ScheduleFrequency.onOff ? Value(daysOff) : const Value.absent(),
+                    repeatEvery: frequency == ScheduleFrequency.cycling ? Value(repeatEvery) : const Value.absent(),
+                    days: frequency == ScheduleFrequency.weekly ? Value(jsonEncode(selectedDays)) : const Value.absent(),
                   );
                   ref.read(scheduleRepositoryProvider).updateSchedule(schedule.id, updatedSchedule);
                   Navigator.pop(context);
