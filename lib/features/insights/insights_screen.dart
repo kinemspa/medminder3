@@ -10,27 +10,41 @@ class InsightsScreen extends ConsumerStatefulWidget {
   _InsightsScreenState createState() => _InsightsScreenState();
 }
 
-class _InsightsScreenState extends ConsumerState<InsightsScreen> {
-  int _selectedIndex = 0;
+class _InsightsScreenState extends ConsumerState<InsightsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      DoseHistoryScreen(),
-      AnalyticsScreen(),
-    ];
     return Scaffold(
       appBar: AppBar(
         title: const Text('Insights'),
         bottom: TabBar(
-          onTap: (index) => setState(() => _selectedIndex = index),
+          controller: _tabController,
           tabs: const [
             Tab(text: 'History'),
             Tab(text: 'Analytics'),
           ],
         ),
       ),
-      body: screens[_selectedIndex],
+      body: TabBarView(
+        controller: _tabController,
+        children: const [
+          DoseHistoryScreen(),
+          AnalyticsScreen(),
+        ],
+      ),
     );
   }
 }
