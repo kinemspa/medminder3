@@ -91,22 +91,7 @@ class HomeContent extends ConsumerWidget {
                 subtitle: Text('${med.strength} ${med.strengthUnit}'),
                 trailing: IconButton(
                   icon: const Icon(Icons.check),
-                  onPressed: () async {
-                    final doses = await (db.select(db.doses)..where((d) => d.medicationId.equals(med.id))).get();
-                    if (doses.isNotEmpty) {
-                      final dose = doses.first;
-                      final doseLog = DoseLogsCompanion(
-                        doseId: Value(dose.id),
-                        takenAt: Value(DateTime.now()),
-                        strength: Value(dose.strength),
-                        strengthUnit: Value(dose.strengthUnit),
-                      );
-                      ref.read(doseLogRepositoryProvider).logDose(doseLog);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Dose logged: ${med.name} at ${DateTime.now().toString().substring(11, 16)}')),
-                      );
-                    }
-                  },
+                  onPressed: () => _showLogDoseDialog(context, ref, db, med),
                 ),
               ),
             )),
@@ -114,6 +99,47 @@ class HomeContent extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+
+  void _showLogDoseDialog(BuildContext context, WidgetRef ref, AppDatabase db, Medication med) {
+    String notes = '';
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Log Dose: ${med.name}'),
+        content: TextField(
+          decoration: const InputDecoration(labelText: 'Notes (optional)'),
+          onChanged: (value) => notes = value,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final doses = await (db.select(db.doses)..where((d) => d.medicationId.equals(med.id))).get();
+              if (doses.isNotEmpty) {
+                final dose = doses.first;
+                final doseLog = DoseLogsCompanion(
+                  doseId: Value(dose.id),
+                  takenAt: Value(DateTime.now()),
+                  strength: Value(dose.strength),
+                  strengthUnit: Value(dose.strengthUnit),
+                  notes: Value(notes.isNotEmpty ? notes : null),
+                );
+                ref.read(doseLogRepositoryProvider).logDose(doseLog);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Dose logged: ${med.name} at ${DateTime.now().toString().substring(11, 16)}')),
+                );
+              }
+            },
+            child: const Text('Log'),
+          ),
+        ],
+      ),
     );
   }
 }

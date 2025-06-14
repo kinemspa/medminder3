@@ -61,7 +61,7 @@ class _DoseHistoryScreenState extends ConsumerState<DoseHistoryScreen> {
               final log = snapshot.data![index];
               return ListTile(
                 title: Text('Dose taken at ${log.takenAt.toString().substring(0, 16)}'),
-                subtitle: Text('${log.strength} ${log.strengthUnit}${log.notes != null ? ' - ${log.notes}' : ''}'),
+                subtitle: Text('${log.strength} ${log.strengthUnit}${log.notes != null ? '\nNotes: ${log.notes}' : ''}'),
               );
             },
           );
