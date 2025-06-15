@@ -143,8 +143,8 @@ class ScheduledDoseRepository {
     final endOfDay = startOfDay.add(const Duration(days: 1));
     return (_db.select(_db.scheduledDoses)
       ..where((d) =>
-      (d.scheduledTime.isBetweenValues(startOfDay, endOfDay) |
-      d.postponedTo.isBetweenValues(startOfDay, endOfDay)) &
+      (d.scheduledTime.isBetween(Variable<DateTime>(startOfDay), Variable<DateTime>(endOfDay)) |
+      d.postponedTo.isBetween(Variable<DateTime>(startOfDay), Variable<DateTime>(endOfDay))) &
       d.status.isNotIn(['taken', 'cancelled']))
       ..orderBy([(d) => OrderingTerm(expression: d.scheduledTime)]))
         .watch();

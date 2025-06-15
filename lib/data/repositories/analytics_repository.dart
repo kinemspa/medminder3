@@ -1,10 +1,6 @@
-import 'dart:convert'; // Added import
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../database/database.dart';
-import '../providers.dart';
-
-final analyticsRepositoryProvider = Provider((ref) => AnalyticsRepository(ref.watch(appDatabaseProvider)));
 
 class AnalyticsRepository {
   final AppDatabase _db;
@@ -12,10 +8,8 @@ class AnalyticsRepository {
   AnalyticsRepository(this._db);
 
   Future<double> getAdherenceRate(int doseId, DateTime startDate, DateTime endDate) async {
-    // Expected doses from schedules
     final schedules = await (_db.select(_db.schedules)..where((s) => s.doseId.equals(doseId))).get();
     int expectedDoses = 0;
-    final now = DateTime.now();
     for (var schedule in schedules) {
       if (schedule.times == null) continue;
       final times = jsonDecode(schedule.times!) as List;
@@ -42,13 +36,12 @@ class AnalyticsRepository {
       }
     }
 
-    // Actual doses logged
     final loggedDoses = await (_db.select(_db.doseLogs)
-      ..where((log) => log.doseId.equals(doseId) & log.takenAt.isBetweenValues(startDate, endDate)))
+      ..where((log) => log.doseId.equals(doseId) & log.takenAt.isBetween(
+          Variable<DateTime>(startDate), Variable<DateTime>(endDate))))
         .get();
     final actualDoses = loggedDoses.length;
 
-    // Calculate adherence rate
     return expectedDoses > 0 ? (actualDoses / expectedDoses) * 100 : 100.0;
   }
 }
