@@ -6,12 +6,13 @@ import '../../../core/constants.dart';
 import '../../../core/widgets/app_header.dart';
 import '../../../core/widgets/custom_integer_field.dart';
 import '../../../core/stepper_constants.dart';
+import '../../../core/medication_stepper_constants.dart';
 import '../../../data/database/database.dart';
 import '../../../data/providers.dart';
 import '../medication_screen.dart';
 
 class TabletStepper extends ConsumerStatefulWidget {
-  final String initialType; // Add initialType
+  final String initialType;
 
   const TabletStepper({required this.initialType, super.key});
 
@@ -20,6 +21,13 @@ class TabletStepper extends ConsumerStatefulWidget {
 }
 
 class _TabletStepperState extends ConsumerState<TabletStepper> {
+  @override
+  void initState() {
+    super.initState();
+    _type = widget.initialType;
+    _updateFormula();
+  }
+
   int _currentStep = 1;
   String _type = 'Tablet';
   String _name = '';
@@ -28,14 +36,27 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
   double _quantity = 1.0;
   bool _enableLowStock = false;
   double _lowStockThreshold = AppConstants.defaultLowStockThreshold;
-  bool _offerRefill = true;
+  bool _offerRefill = false;
   String _notificationType = 'default';
   bool _addReferenceDose = false;
   double? _referenceStrength;
   double? _referenceTablets;
   String? _errorMessage;
+  String _formulaText = '';
 
   bool get _isLastStep => _currentStep == 5;
+
+  void _updateFormula() {
+    setState(() {
+      _formulaText = MedicationStepperConstants.getFormulaText(
+        type: _type,
+        name: _name,
+        strength: _strength,
+        strengthUnit: _strengthUnit,
+        quantity: _quantity,
+      );
+    });
+  }
 
   bool _validateStep() {
     setState(() => _errorMessage = null);
@@ -59,6 +80,7 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
       setState(() => _errorMessage = 'Reference dose strength is required');
       return false;
     }
+    _updateFormula();
     return true;
   }
 
@@ -75,91 +97,46 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
   void _saveMedication() async {
     if (!mounted) return;
     if (!await _checkNameUniqueness()) return;
-    await showDialog(
+    final confirmed = await MedicationStepperConstants.buildConfirmationDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text(
-          'Confirm Medication',
-          style: TextStyle(
-            color: Color(0xFF1E88E5),
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        content: RichText(
-          text: TextSpan(
-            style: Theme.of(context).textTheme.bodyMedium,
-            children: [
-              const TextSpan(text: 'Name: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: '$_name\n', style: const TextStyle(fontWeight: FontWeight.bold)),
-              const TextSpan(text: 'Type: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              const TextSpan(text: 'Tablet\n', style: TextStyle(fontWeight: FontWeight.bold)),
-              const TextSpan(text: 'Strength: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: '$_strength $_strengthUnit per tablet\n', style: const TextStyle(fontWeight: FontWeight.bold)),
-              const TextSpan(text: 'Quantity: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: '$_quantity tablets\n', style: const TextStyle(fontWeight: FontWeight.bold)),
-              const TextSpan(text: 'Total Medicine: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: '${_quantity * _strength} $_strengthUnit\n', style: const TextStyle(fontWeight: FontWeight.bold)),
-              const TextSpan(text: 'Low Stock Notifications: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: '${_enableLowStock ? 'Enabled ($_lowStockThreshold tablets)' : 'Disabled'}\n', style: const TextStyle(fontWeight: FontWeight.bold)),
-              const TextSpan(text: 'Offer Refill: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: '${_offerRefill ? 'Yes' : 'No'}\n', style: const TextStyle(fontWeight: FontWeight.bold)),
-              const TextSpan(text: 'Notification Type: ', style: TextStyle(fontWeight: FontWeight.bold)),
-              TextSpan(text: '$_notificationType\n', style: const TextStyle(fontWeight: FontWeight.bold)),
-              if (_addReferenceDose) ...[
-                const TextSpan(text: 'Reference Dose: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                TextSpan(text: '$_referenceStrength $_strengthUnit ($_referenceTablets tablets)', style: const TextStyle(fontWeight: FontWeight.bold)),
-              ] else
-                const TextSpan(text: 'No Reference Dose', style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-        actions: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: () async {
-                  try {
-                    final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
-                    final med = MedicationsCompanion(
-                      name: Value(_name),
-                      type: const Value('tablet'),
-                      strength: Value(_strength),
-                      strengthUnit: Value(_strengthUnit),
-                      quantity: Value(_quantity),
-                      volumeUnit: const Value('Tablet'),
-                      referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit ($_referenceTablets tablets)' : null),
-                      lowStockThreshold: Value(_enableLowStock ? _lowStockThreshold : defaultThreshold),
-                    );
-                    await ref.read(medicationRepositoryProvider).addMedication(med);
-                    if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext);
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => MedicationScreen()), // Remove const
-                      );
-                    }
-                  } catch (e) {
-                    if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext);
-                      setState(() => _errorMessage = 'Failed to save: $e');
-                    }
-                  }
-                },
-                child: const Text('Save'),
-              ),
-              const SizedBox(width: 16),
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-        ],
-      ),
+      name: _name,
+      type: _type,
+      strength: _strength,
+      strengthUnit: _strengthUnit,
+      quantity: _quantity,
+      volumeUnit: 'Tablet',
+      enableLowStock: _enableLowStock,
+      lowStockThreshold: _lowStockThreshold,
+      offerRefill: _offerRefill,
+      notificationType: _notificationType,
+      addReferenceDose: _addReferenceDose,
+      referenceStrength: _referenceStrength,
+      referenceSyringeAmount: _referenceTablets,
+      onConfirm: () async {
+        final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
+        final med = MedicationsCompanion(
+          name: Value(_name),
+          type: const Value('tablet'),
+          strength: Value(_strength),
+          strengthUnit: Value(_strengthUnit),
+          quantity: Value(_quantity),
+          volumeUnit: const Value('Tablet'),
+          referenceDose: Value(_addReferenceDose ? '${_referenceStrength?.toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')} $_strengthUnit ($_referenceTablets tablets)' : null),
+          lowStockThreshold: Value(_enableLowStock ? _lowStockThreshold : defaultThreshold),
+        );
+        await ref.read(medicationRepositoryProvider).addMedication(med);
+        if (mounted) {
+          Navigator.pop(context);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MedicationScreen()),
+          );
+        }
+      },
     );
+    if (!confirmed && mounted) {
+      setState(() => _errorMessage = 'Medication save cancelled');
+    }
   }
 
   @override
@@ -168,6 +145,13 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
       appBar: const AppHeader(title: 'Add Tablet'),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              _formulaText.isEmpty ? widget.initialType : _formulaText,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
           if (_errorMessage != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -189,6 +173,11 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                   setState(() => _currentStep--);
                 } else {
                   Navigator.pop(context);
+                }
+              },
+              onStepTapped: (step) {
+                if (step != 0) {
+                  setState(() => _currentStep = step);
                 }
               },
               steps: [
@@ -228,7 +217,10 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                           helperText: 'Enter the name of the tablet (e.g., Ibuprofen).',
                           helperStyle: StepperConstants.instructionTextStyle,
                         ),
-                        onChanged: (value) => setState(() => _name = value),
+                        onChanged: (value) => setState(() {
+                          _name = value;
+                          _updateFormula();
+                        }),
                       ),
                     ],
                   ),
@@ -248,8 +240,14 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                         initialValue: _strength,
                         unitOptions: AppConstants.tabletStrengthUnits,
                         initialUnit: _strengthUnit,
-                        onChanged: (value) => setState(() => _strength = value),
-                        onUnitChanged: (unit) => setState(() => _strengthUnit = unit),
+                        onChanged: (value) => setState(() {
+                          _strength = value;
+                          _updateFormula();
+                        }),
+                        onUnitChanged: (unit) => setState(() {
+                          _strengthUnit = unit;
+                          _updateFormula();
+                        }),
                       ),
                     ],
                   ),
@@ -267,16 +265,10 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                         label: 'Quantity (Tablets in Stock)',
                         helperText: 'Enter the number of tablets in stock.',
                         initialValue: _quantity,
-                        onChanged: (value) => setState(() => _quantity = value),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          '$_quantity Remaining of $_name Tablet for a Total of ${_quantity * _strength} $_strengthUnit',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                          softWrap: true,
-                          overflow: TextOverflow.visible,
-                        ),
+                        onChanged: (value) => setState(() {
+                          _quantity = value;
+                          _updateFormula();
+                        }),
                       ),
                     ],
                   ),
@@ -296,42 +288,41 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                         value: _enableLowStock,
                         onChanged: (value) => setState(() => _enableLowStock = value),
                       ),
-                      if (_enableLowStock)
+                      if (_enableLowStock) ...[
                         CustomIntegerField(
                           label: 'Low Stock Threshold (Tablets)',
                           helperText: 'Set the number of tablets remaining to trigger a reminder.',
                           initialValue: _lowStockThreshold,
                           onChanged: (value) => setState(() => _lowStockThreshold = value),
                         ),
-                      SwitchListTile(
-                        title: const Text('Offer Refill Option'),
-                        subtitle: const Text('Include a refill prompt in low stock notifications.'),
-                        value: _offerRefill,
-                        onChanged: (value) => setState(() => _offerRefill = value),
-                      ),
-                      ClipRRect( // Add ClipRRect
-                        borderRadius: BorderRadius.circular(12),
-                        child: DropdownButtonFormField<String>(
-                          value: _notificationType,
-                          onChanged: (value) => setState(() => _notificationType = value!),
-                          items: ['default', 'urgent', 'silent']
-                              .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
-                              .toList(),
-                          isExpanded: true,
-                          decoration: StepperConstants.dropdownDecoration,
-                          hint: Text('Select notification type', style: TextStyle(color: Colors.grey[600])),
+                        SwitchListTile(
+                          title: const Text('Offer Refill Option'),
+                          subtitle: const Text('Include a refill prompt in low stock notifications.'),
+                          value: _offerRefill,
+                          onChanged: (value) => setState(() => _offerRefill = value),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
-                        style: StepperConstants.instructionTextStyle,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
-                        style: StepperConstants.instructionTextStyle,
-                      ),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: DropdownButtonFormField<String>(
+                            value: _notificationType,
+                            onChanged: (value) => setState(() => _notificationType = value!),
+                            items: ['default', 'urgent', 'silent']
+                                .map((type) => DropdownMenuItem(
+                              value: type,
+                              child: Center(child: Text(type.capitalize())),
+                            ))
+                                .toList(),
+                            isExpanded: true,
+                            decoration: StepperConstants.dropdownDecoration,
+                            hint: Text('Select notification type', style: TextStyle(color: Colors.grey[600])),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
+                          style: StepperConstants.instructionTextStyle,
+                        ),
+                      ],
                     ],
                   ),
                   isActive: _currentStep >= 4,
@@ -385,6 +376,7 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                 context,
                 details,
                 isLastStep: _isLastStep,
+                currentStep: _currentStep,
               ),
             ),
           ),

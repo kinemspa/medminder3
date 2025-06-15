@@ -2,9 +2,9 @@
 import 'package:flutter/material.dart';
 
 class StepperConstants {
-  // Step title style (blue, bold)
+  // Step title style (black, bold)
   static const TextStyle stepTitleStyle = TextStyle(
-    color: Color(0xFF1E88E5), // Matches AppTheme._primaryColor
+    color: Colors.black,
     fontWeight: FontWeight.bold,
     fontSize: 18,
   );
@@ -15,10 +15,19 @@ class StepperConstants {
     fontSize: 12,
   );
 
-  // Dropdown decoration (rounded corners)
-  static const InputDecoration dropdownDecoration = InputDecoration(
+  // Dropdown decoration (softer borders, non-const)
+  static InputDecoration dropdownDecoration = InputDecoration(
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12), // Rounded corners
+      borderRadius: BorderRadius.all(Radius.circular(12)),
+      borderSide: BorderSide(color: Colors.grey[400]!, width: 0.5),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(12)),
+      borderSide: BorderSide(color: Colors.grey[400]!, width: 0.5),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(12)),
+      borderSide: BorderSide(color: Color(0xFF1E88E5), width: 1.0),
     ),
     contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
   );
@@ -28,20 +37,21 @@ class StepperConstants {
       BuildContext context,
       ControlsDetails details, {
         required bool isLastStep,
+        required int currentStep,
       }) {
     return Padding(
-      padding: const EdgeInsets.only(top: 24.0), // Increased padding above buttons
+      padding: const EdgeInsets.only(top: 24.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center, // Center buttons
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton(
             onPressed: details.onStepContinue,
-            child: Text(isLastStep ? 'Save' : 'Continue'),
+            child: Text(currentStep >= 2 && !isLastStep ? 'Next' : isLastStep ? 'Confirm' : 'Continue'),
           ),
           const SizedBox(width: 16),
           TextButton(
             onPressed: details.onStepCancel,
-            child: const Text('Cancel'),
+            child: Text(currentStep >= 2 ? 'Previous' : 'Cancel'),
           ),
         ],
       ),

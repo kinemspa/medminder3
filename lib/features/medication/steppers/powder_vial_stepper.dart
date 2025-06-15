@@ -1,19 +1,19 @@
 // lib/features/medication/steppers/powder_vial_stepper.dart
 import 'package:flutter/material.dart';
-import '../medication_screen.dart'; // Add at top
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../../core/constants.dart';
 import '../../../core/widgets/app_header.dart';
 import '../../../core/widgets/custom_integer_field.dart';
 import '../../../core/stepper_constants.dart';
+import '../../../core/medication_stepper_constants.dart';
 import '../../../data/database/database.dart';
 import '../../../data/providers.dart';
-
 import '../reconstitution_calculator.dart';
+import '../medication_screen.dart';
 
 class PowderVialStepper extends ConsumerStatefulWidget {
-  final String initialType; // Add initialType
+  final String initialType;
 
   const PowderVialStepper({required this.initialType, super.key});
 
@@ -22,23 +22,43 @@ class PowderVialStepper extends ConsumerStatefulWidget {
 }
 
 class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
-  int _currentStep = 0;
-  String _type = widget.initialType; // Use initialType
+  @override
+  void initState() {
+    super.initState();
+    _type = widget.initialType;
+    _updateFormula();
+  }
+
+  int _currentStep = 1;
+  String _type = 'Powder Vial';
   String _name = '';
   double _strength = 1.0;
-  String _strengthUnit = AppConstants.injectionStrengthUnits[1]; // Default to mg
+  String _strengthUnit = AppConstants.injectionStrengthUnits[1];
   double _reconFluidVolume = 1.0;
-  String _volumeUnit = AppConstants.volumeUnits[0]; // Default to mL
+  String _volumeUnit = AppConstants.volumeUnits[0];
   bool _enableLowStock = false;
   double _lowStockThreshold = AppConstants.defaultLowStockThreshold;
-  bool _offerRefill = true;
+  bool _offerRefill = false;
   String _notificationType = 'default';
   bool _addReferenceDose = false;
   double _referenceStrength = 1.0;
   double _referenceSyringeAmount = 1.0;
   String? _errorMessage;
+  String _formulaText = '';
 
   bool get _isLastStep => _currentStep == 5;
+
+  void _updateFormula() {
+    setState(() {
+      _formulaText = MedicationStepperConstants.getFormulaText(
+        type: _type,
+        name: _name,
+        strength: _strength,
+        strengthUnit: _strengthUnit,
+        quantity: _reconFluidVolume,
+      );
+    });
+  }
 
   bool _validateStep() {
     setState(() => _errorMessage = null);
@@ -62,6 +82,7 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
       setState(() => _errorMessage = 'Reference dose strength is required');
       return false;
     }
+    _updateFormula();
     return true;
   }
 
@@ -78,67 +99,46 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
   void _saveMedication() async {
     if (!mounted) return;
     if (!await _checkNameUniqueness()) return;
-    await showDialog(
+    final confirmed = await MedicationStepperConstants.buildConfirmationDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirm Medication'),
-        content: Text(
-          'Name: $_name\n'
-              'Type: Powder Vial\n'
-              'Strength: $_strength $_strengthUnit\n'
-              'Reconstitution Fluid Volume: $_reconFluidVolume $_volumeUnit\n'
-              'Total Medicine: ${_reconFluidVolume * _strength} ${_strengthUnit.replaceAll('/mL', '')}\n'
-              'Low Stock Notifications: ${_enableLowStock ? 'Enabled ($_lowStockThreshold $_volumeUnit)' : 'Disabled'}\n'
-              'Offer Refill: ${_offerRefill ? 'Yes' : 'No'}\n'
-              'Notification Type: $_notificationType\n'
-              '${_addReferenceDose ? 'Reference Dose: $_referenceStrength ${_strengthUnit.replaceAll('/mL', '')} ($_referenceSyringeAmount mL)' : 'No Reference Dose'}',
-        ),
-        actions: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 16),
-              TextButton(
-                onPressed: () async {
-                  try {
-                    final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
-                    final med = MedicationsCompanion(
-                      name: Value(_name),
-                      type: const Value('powderVial'),
-                      strength: Value(_strength),
-                      strengthUnit: Value(_strengthUnit),
-                      quantity: Value(_reconFluidVolume),
-                      volumeUnit: Value(_volumeUnit),
-                      referenceDose: Value(_addReferenceDose ? '$_referenceStrength ${_strengthUnit.replaceAll('/mL', '')} ($_referenceSyringeAmount mL)' : null),
-                      lowStockThreshold: Value(_enableLowStock ? _lowStockThreshold : defaultThreshold),
-                    );
-                    await ref.read(medicationRepositoryProvider).addMedication(med);
-                    if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext); // Close dialog
-                      Navigator.pop(context); // Close stepper
-                      Navigator.pushReplacement( // Add navigation
-                        context,
-                        MaterialPageRoute(builder: (_) => const MedicationScreen()),
-                      );
-                    }
-                  } catch (e) {
-                    if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext); // Close dialog
-                      setState(() => _errorMessage = 'Failed to save: $e');
-                    }
-                  }
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ],
-      ),
+      name: _name,
+      type: _type,
+      strength: _strength,
+      strengthUnit: _strengthUnit,
+      quantity: _reconFluidVolume,
+      volumeUnit: _volumeUnit,
+      enableLowStock: _enableLowStock,
+      lowStockThreshold: _lowStockThreshold,
+      offerRefill: _offerRefill,
+      notificationType: _notificationType,
+      addReferenceDose: _addReferenceDose,
+      referenceStrength: _referenceStrength,
+      referenceSyringeAmount: _referenceSyringeAmount,
+      onConfirm: () async {
+        final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
+        final med = MedicationsCompanion(
+          name: Value(_name),
+          type: const Value('powderVial'),
+          strength: Value(_strength),
+          strengthUnit: Value(_strengthUnit),
+          quantity: Value(_reconFluidVolume),
+          volumeUnit: Value(_volumeUnit),
+          referenceDose: Value(_addReferenceDose ? '${_referenceStrength.toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')} ${_strengthUnit.replaceAll('/mL', '')} ($_referenceSyringeAmount mL)' : null),
+          lowStockThreshold: Value(_enableLowStock ? _lowStockThreshold : defaultThreshold),
+        );
+        await ref.read(medicationRepositoryProvider).addMedication(med);
+        if (mounted) {
+          Navigator.pop(context);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MedicationScreen()),
+          );
+        }
+      },
     );
+    if (!confirmed && mounted) {
+      setState(() => _errorMessage = 'Medication save cancelled');
+    }
   }
 
   @override
@@ -147,6 +147,13 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
       appBar: const AppHeader(title: 'Add Powder Vial'),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              _formulaText.isEmpty ? widget.initialType : _formulaText,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
           if (_errorMessage != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -164,10 +171,15 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                 }
               },
               onStepCancel: () {
-                if (_currentStep > 0) {
+                if (_currentStep > 1) {
                   setState(() => _currentStep--);
                 } else {
                   Navigator.pop(context);
+                }
+              },
+              onStepTapped: (step) {
+                if (step != 0) {
+                  setState(() => _currentStep = step);
                 }
               },
               steps: [
@@ -191,6 +203,7 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                     ],
                   ),
                   isActive: _currentStep >= 0,
+                  state: StepState.complete,
                 ),
                 Step(
                   title: const Text(
@@ -206,7 +219,10 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                           helperText: 'Enter the name of the medication (e.g., BPC-157).',
                           helperStyle: StepperConstants.instructionTextStyle,
                         ),
-                        onChanged: (value) => setState(() => _name = value),
+                        onChanged: (value) => setState(() {
+                          _name = value;
+                          _updateFormula();
+                        }),
                       ),
                     ],
                   ),
@@ -226,8 +242,14 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                         initialValue: _strength,
                         unitOptions: AppConstants.injectionStrengthUnits,
                         initialUnit: _strengthUnit,
-                        onChanged: (value) => setState(() => _strength = value),
-                        onUnitChanged: (unit) => setState(() => _strengthUnit = unit),
+                        onChanged: (value) => setState(() {
+                          _strength = value;
+                          _updateFormula();
+                        }),
+                        onUnitChanged: (unit) => setState(() {
+                          _strengthUnit = unit;
+                          _updateFormula();
+                        }),
                       ),
                     ],
                   ),
@@ -247,17 +269,14 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                         initialValue: _reconFluidVolume,
                         unitOptions: AppConstants.volumeUnits,
                         initialUnit: _volumeUnit,
-                        onChanged: (value) => setState(() => _reconFluidVolume = value),
-                        onUnitChanged: (unit) => setState(() => _volumeUnit = unit),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Text(
-                          'Total Medicine: ${_reconFluidVolume * _strength} ${_strengthUnit.replaceAll('/mL', '')}',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                          softWrap: true,
-                          overflow: TextOverflow.visible,
-                        ),
+                        onChanged: (value) => setState(() {
+                          _reconFluidVolume = value;
+                          _updateFormula();
+                        }),
+                        onUnitChanged: (unit) => setState(() {
+                          _volumeUnit = unit;
+                          _updateFormula();
+                        }),
                       ),
                     ],
                   ),
@@ -277,42 +296,41 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                         value: _enableLowStock,
                         onChanged: (value) => setState(() => _enableLowStock = value),
                       ),
-                      if (_enableLowStock)
+                      if (_enableLowStock) ...[
                         CustomIntegerField(
                           label: 'Low Stock Threshold',
                           helperText: 'Set the remaining volume to trigger a reminder (e.g., 0.5 mL).',
                           initialValue: _lowStockThreshold,
                           onChanged: (value) => setState(() => _lowStockThreshold = value),
                         ),
-                      SwitchListTile(
-                        title: const Text('Offer Refill Option'),
-                        subtitle: const Text('Include a refill prompt in low stock notifications.'),
-                        value: _offerRefill,
-                        onChanged: (value) => setState(() => _offerRefill = value),
-                      ),
-                      ClipRRect( // Add ClipRRect
-                        borderRadius: BorderRadius.circular(12),
-                        child: DropdownButtonFormField<String>(
-                          value: _notificationType,
-                          onChanged: (value) => setState(() => _notificationType = value!),
-                          items: ['default', 'urgent', 'silent']
-                              .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
-                              .toList(),
-                          isExpanded: true,
-                          decoration: StepperConstants.dropdownDecoration,
-                          hint: Text('Select notification type', style: TextStyle(color: Colors.grey[600])), // Update hint
+                        SwitchListTile(
+                          title: const Text('Offer Refill Option'),
+                          subtitle: const Text('Include a refill prompt in low stock notifications.'),
+                          value: _offerRefill,
+                          onChanged: (value) => setState(() => _offerRefill = value),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
-                        style: StepperConstants.instructionTextStyle,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
-                        style: StepperConstants.instructionTextStyle,
-                      ),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: DropdownButtonFormField<String>(
+                            value: _notificationType,
+                            onChanged: (value) => setState(() => _notificationType = value!),
+                            items: ['default', 'urgent', 'silent']
+                                .map((type) => DropdownMenuItem(
+                              value: type,
+                              child: Center(child: Text(type.capitalize())),
+                            ))
+                                .toList(),
+                            isExpanded: true,
+                            decoration: StepperConstants.dropdownDecoration,
+                            hint: Text('Select notification type', style: TextStyle(color: Colors.grey[600])),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
+                          style: StepperConstants.instructionTextStyle,
+                        ),
+                      ],
                     ],
                   ),
                   isActive: _currentStep >= 4,
@@ -340,7 +358,9 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                           initialUnit: _strengthUnit,
                           onChanged: (value) => setState(() {
                             _referenceStrength = value;
-                            if (_strength > 0) _referenceSyringeAmount = value / _strength;
+                            if (_strength > 0) {
+                              _referenceSyringeAmount = value / _strength;
+                            }
                           }),
                         ),
                         CustomIntegerField(
@@ -349,7 +369,9 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                           initialValue: _referenceSyringeAmount,
                           onChanged: (value) => setState(() {
                             _referenceSyringeAmount = value;
-                            if (_strength > 0) _referenceStrength = value * _strength;
+                            if (_strength > 0) {
+                              _referenceStrength = value * _strength;
+                            }
                           }),
                         ),
                       ],
@@ -362,6 +384,7 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                 context,
                 details,
                 isLastStep: _isLastStep,
+                currentStep: _currentStep,
               ),
             ),
           ),

@@ -8,7 +8,7 @@ import 'ready_to_use_vial_stepper.dart';
 import 'powder_vial_stepper.dart';
 
 class InjectionStepper extends ConsumerStatefulWidget {
-  final String initialType; // Add initialType
+  final String initialType;
 
   const InjectionStepper({required this.initialType, super.key});
 
@@ -20,6 +20,15 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
   int _currentStep = 0;
   MedicationType? _selectedType;
   String? _errorMessage;
+  String _formulaText = '';
+
+  void _updateFormula() {
+    setState(() {
+      _formulaText = _selectedType == null
+          ? widget.initialType
+          : _selectedType.toString().split('.').last.replaceAll('readyToUseVial', 'Ready-to-Use Vial').replaceAll('powderVial', 'Powder Vial');
+    });
+  }
 
   void _navigateToSubStepper() {
     if (_selectedType == null) {
@@ -29,13 +38,11 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
     Widget stepper;
     switch (_selectedType!) {
       case MedicationType.readyToUseVial:
-        stepper = ReadyToUseVialStepper(initialType: widget.initialType); // Pass initialType
+        stepper = ReadyToUseVialStepper(initialType: widget.initialType);
         break;
       case MedicationType.powderVial:
-        stepper = PowderVialStepper(initialType: widget.initialType); // Pass initialType
+        stepper = PowderVialStepper(initialType: widget.initialType);
         break;
-      default:
-        return;
     }
     Navigator.push(context, MaterialPageRoute(builder: (_) => stepper));
   }
@@ -46,6 +53,13 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
       appBar: const AppHeader(title: 'Add Injection'),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              _formulaText.isEmpty ? widget.initialType : _formulaText,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
           if (_errorMessage != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -76,11 +90,11 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
                         borderRadius: BorderRadius.circular(12),
                         child: DropdownButtonFormField<MedicationType>(
                           value: _selectedType,
-                          hint: Text( // Remove const
-                            'Choose an injection type',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                          onChanged: (value) => setState(() => _selectedType = value),
+                          hint: Text('Choose an injection type', style: TextStyle(color: Colors.grey[600])),
+                          onChanged: (value) => setState(() {
+                            _selectedType = value;
+                            _updateFormula();
+                          }),
                           items: [
                             MedicationType.readyToUseVial,
                             MedicationType.powderVial,
@@ -88,7 +102,7 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
                             String displayName = type == MedicationType.readyToUseVial ? 'Ready-to-Use Vial' : 'Powder Vial';
                             return DropdownMenuItem(
                               value: type,
-                              child: Text(displayName),
+                              child: Center(child: Text(displayName)),
                             );
                           }).toList(),
                           isExpanded: true,
@@ -109,6 +123,7 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
                 context,
                 details,
                 isLastStep: false,
+                currentStep: _currentStep,
               ),
             ),
           ),

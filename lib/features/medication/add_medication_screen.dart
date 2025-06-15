@@ -19,12 +19,14 @@ class AddMedicationScreen extends ConsumerStatefulWidget {
 class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
   String? _selectedType;
   String? _errorMessage;
+  String _formulaText = '';
 
   void _navigateToStepper() {
     if (_selectedType == null) {
       setState(() => _errorMessage = 'Please select a medication type');
       return;
     }
+    setState(() => _formulaText = _selectedType!);
     Widget stepper;
     switch (_selectedType!) {
       case 'Tablet':
@@ -54,6 +56,14 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
       appBar: const AppHeader(title: 'Add Medication'),
       body: Column(
         children: [
+          if (_formulaText.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                _formulaText,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
           if (_errorMessage != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -76,7 +86,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ClipRRect( // Add ClipRRect
+                      ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: DropdownButtonFormField<String>(
                           value: _selectedType,
@@ -91,7 +101,10 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                             'Injection',
                             'Ready-to-Use Vial',
                             'Powder Vial',
-                          ].map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
+                          ].map((type) => DropdownMenuItem(
+                            value: type,
+                            child: Center(child: Text(type)),
+                          )).toList(),
                           isExpanded: true,
                           decoration: StepperConstants.dropdownDecoration,
                         ),
@@ -110,6 +123,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                 context,
                 details,
                 isLastStep: false,
+                currentStep: 0,
               ),
             ),
           ),
