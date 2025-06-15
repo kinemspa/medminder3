@@ -29,7 +29,7 @@ class StepperConstants {
       borderRadius: BorderRadius.all(Radius.circular(12)),
       borderSide: BorderSide(color: Color(0xFF1E88E5), width: 1.0),
     ),
-    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
   );
 
   // Controls builder for centered buttons with padding
@@ -44,14 +44,14 @@ class StepperConstants {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ElevatedButton(
-            onPressed: details.onStepContinue,
-            child: Text(currentStep >= 2 && !isLastStep ? 'Next' : isLastStep ? 'Confirm' : 'Continue'),
-          ),
-          const SizedBox(width: 16),
           TextButton(
             onPressed: details.onStepCancel,
             child: Text(currentStep >= 2 ? 'Previous' : 'Cancel'),
+          ),
+          const SizedBox(width: 16),
+          ElevatedButton(
+            onPressed: details.onStepContinue,
+            child: Text(currentStep >= 2 && !isLastStep ? 'Next' : isLastStep ? 'Confirm' : 'Continue'),
           ),
         ],
       ),

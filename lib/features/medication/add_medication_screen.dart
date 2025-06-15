@@ -62,6 +62,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
               child: Text(
                 _formulaText,
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
             ),
           if (_errorMessage != null)

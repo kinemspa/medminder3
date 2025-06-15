@@ -12,16 +12,18 @@ class MedicationStepperConstants {
     double strength = 1.0,
     String strengthUnit = '',
     double quantity = 1.0,
+    required int currentStep,
   }) {
-    if (name.isEmpty) {
+    if (currentStep < 1 || name.isEmpty) {
       return type;
-    } else if (strength == 1.0) {
+    } else if (currentStep == 1) {
       return '$name $type';
-    } else if (quantity == 1.0) {
-      return '${strength.toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')} $name $type';
-    } else {
-      return '$quantity x ${strength.toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')} $name $type${quantity > 1 ? 's' : ''}. Total: ${(quantity * strength).toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')} $strengthUnit';
+    } else if (currentStep == 2) {
+      return '${strength.toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')}$strengthUnit$name$type';
+    } else if (currentStep >= 3) {
+      return '${quantity.toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')} x ${strength.toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')} $name $type${quantity > 1 ? 's' : ''}\nTotal: ${(quantity * strength).toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')} ${strengthUnit.replaceAll('/mL', '')}';
     }
+    return type;
   }
 
   // Build confirmation dialog with differentiated text and no trailing zeros
@@ -40,7 +42,7 @@ class MedicationStepperConstants {
     required bool addReferenceDose,
     required double? referenceStrength,
     required double? referenceSyringeAmount,
-    required Future<void> Function() onConfirm, // Changed from AsyncCallback
+    required Future<void> Function() onConfirm,
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,

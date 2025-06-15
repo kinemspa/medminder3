@@ -38,6 +38,7 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
   String _volumeUnit = AppConstants.volumeUnits[0];
   bool _enableLowStock = false;
   double _lowStockThreshold = AppConstants.defaultLowStockThreshold;
+  bool _thresholdIsPercentage = false;
   bool _offerRefill = false;
   String _notificationType = 'default';
   bool _addReferenceDose = false;
@@ -50,13 +51,22 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
 
   void _updateFormula() {
     setState(() {
-      _formulaText = MedicationStepperConstants.getFormulaText(
+      String baseFormula = MedicationStepperConstants.getFormulaText(
         type: _type,
         name: _name,
         strength: _strength,
         strengthUnit: _strengthUnit,
         quantity: _reconFluidVolume,
+        currentStep: _currentStep,
       );
+      if (_currentStep >= 4 && _enableLowStock) {
+        String thresholdUnit = _thresholdIsPercentage ? '%' : _volumeUnit;
+        baseFormula += '\nLow Stock: ${_lowStockThreshold.toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')} $thresholdUnit, Notification: $_notificationType${_offerRefill ? ', Refill Offered' : ''}';
+      }
+      if (_currentStep >= 5 && _addReferenceDose) {
+        baseFormula += '\nReference Dose: ${_referenceStrength.toStringAsFixed(2).replaceAll(RegExp(r'\.0+$'), '')} ${_strengthUnit.replaceAll('/mL', '')} ($_referenceSyringeAmount mL)';
+      }
+      _formulaText = baseFormula;
     });
   }
 
@@ -74,9 +84,15 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
       setState(() => _errorMessage = 'Volume must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 4 && _enableLowStock && (_lowStockThreshold < AppConstants.minValue || _lowStockThreshold > AppConstants.maxValue)) {
-      setState(() => _errorMessage = 'Threshold must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
-      return false;
+    if (_currentStep == 4 && _enableLowStock) {
+      if (_lowStockThreshold < AppConstants.minValue || _lowStockThreshold > AppConstants.maxValue) {
+        setState(() => _errorMessage = 'Threshold must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
+        return false;
+      }
+      if (_thresholdIsPercentage && (_lowStockThreshold < 0 || _lowStockThreshold > 100)) {
+        setState(() => _errorMessage = 'Percentage must be between 0 and 100');
+        return false;
+      }
     }
     if (_currentStep == 5 && _addReferenceDose && (_referenceStrength < AppConstants.minValue || _referenceStrength > AppConstants.maxValue)) {
       setState(() => _errorMessage = 'Reference dose strength is required');
@@ -151,7 +167,12 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
             padding: const EdgeInsets.all(16.0),
             child: Text(
               _formulaText.isEmpty ? widget.initialType : _formulaText,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: _currentStep >= 3 ? 18 : 16,
+                fontWeight: FontWeight.bold,
+                color: _currentStep >= 3 ? Color(0xFF1E88E5) : Colors.black,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
           if (_errorMessage != null)
@@ -291,39 +312,66 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SwitchListTile(
-                        title: const Text('Enable Low Stock Notifications'),
-                        subtitle: const Text('Receive alerts when stock is low.'),
+                        title: const Text('Enable Low Stock Notifications', style: TextStyle(fontSize: 14)),
+                        subtitle: const Text('Receive alerts when stock is low.', style: TextStyle(fontSize: 12)),
                         value: _enableLowStock,
-                        onChanged: (value) => setState(() => _enableLowStock = value),
+                        onChanged: (value) => setState(() {
+                          _enableLowStock = value;
+                          _updateFormula();
+                        }),
                       ),
                       if (_enableLowStock) ...[
-                        CustomIntegerField(
-                          label: 'Low Stock Threshold',
-                          helperText: 'Set the remaining volume to trigger a reminder (e.g., 0.5 mL).',
-                          initialValue: _lowStockThreshold,
-                          onChanged: (value) => setState(() => _lowStockThreshold = value),
-                        ),
-                        SwitchListTile(
-                          title: const Text('Offer Refill Option'),
-                          subtitle: const Text('Include a refill prompt in low stock notifications.'),
-                          value: _offerRefill,
-                          onChanged: (value) => setState(() => _offerRefill = value),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: CustomIntegerField(
+                                label: 'Low Stock Threshold',
+                                helperText: 'Set the threshold to trigger a reminder.',
+                                initialValue: _lowStockThreshold,
+                                onChanged: (value) => setState(() {
+                                  _lowStockThreshold = value;
+                                  _updateFormula();
+                                }),
+                              ),
+                            ),
+                            Switch(
+                              value: _thresholdIsPercentage,
+                              onChanged: (value) => setState(() {
+                                _thresholdIsPercentage = value;
+                                _updateFormula();
+                              }),
+                            ),
+                            Text(_thresholdIsPercentage ? '%' : _volumeUnit, style: TextStyle(fontSize: 14)),
+                          ],
                         ),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: DropdownButtonFormField<String>(
                             value: _notificationType,
-                            onChanged: (value) => setState(() => _notificationType = value!),
+                            onChanged: (value) => setState(() {
+                              _notificationType = value!;
+                              _updateFormula();
+                            }),
                             items: ['default', 'urgent', 'silent']
                                 .map((type) => DropdownMenuItem(
                               value: type,
-                              child: Center(child: Text(type.capitalize())),
+                              child: Center(child: Text(type.capitalize(), style: TextStyle(fontSize: 14))),
                             ))
                                 .toList(),
                             isExpanded: true,
                             decoration: StepperConstants.dropdownDecoration,
-                            hint: Text('Select notification type', style: TextStyle(color: Colors.grey[600])),
+                            hint: Text('Select notification type', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
                           ),
+                        ),
+                        const SizedBox(height: 8),
+                        SwitchListTile(
+                          title: const Text('Offer Refill Option', style: TextStyle(fontSize: 14)),
+                          subtitle: const Text('Include a refill prompt in low stock notifications.', style: TextStyle(fontSize: 12)),
+                          value: _offerRefill,
+                          onChanged: (value) => setState(() {
+                            _offerRefill = value;
+                            _updateFormula();
+                          }),
                         ),
                         const SizedBox(height: 8),
                         const Text(
@@ -344,10 +392,13 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SwitchListTile(
-                        title: const Text('Set Reference Dose'),
-                        subtitle: const Text('Define a typical dose for this medication.'),
+                        title: const Text('Set Reference Dose', style: TextStyle(fontSize: 14)),
+                        subtitle: const Text('Define a typical dose for this medication.', style: TextStyle(fontSize: 12)),
                         value: _addReferenceDose,
-                        onChanged: (value) => setState(() => _addReferenceDose = value),
+                        onChanged: (value) => setState(() {
+                          _addReferenceDose = value;
+                          _updateFormula();
+                        }),
                       ),
                       if (_addReferenceDose) ...[
                         CustomIntegerField(
@@ -361,6 +412,7 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                             if (_strength > 0) {
                               _referenceSyringeAmount = value / _strength;
                             }
+                            _updateFormula();
                           }),
                         ),
                         CustomIntegerField(
@@ -372,6 +424,7 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                             if (_strength > 0) {
                               _referenceStrength = value * _strength;
                             }
+                            _updateFormula();
                           }),
                         ),
                       ],

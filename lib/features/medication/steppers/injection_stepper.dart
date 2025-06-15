@@ -59,7 +59,12 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
             padding: const EdgeInsets.all(16.0),
             child: Text(
               _formulaText.isEmpty ? widget.initialType : _formulaText,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
           if (_errorMessage != null)
@@ -93,10 +98,32 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
                         child: DropdownButtonFormField<MedicationType>(
                           value: _selectedType,
                           hint: Text('Choose an injection type', style: TextStyle(color: Colors.grey[600])),
-                          onChanged: (value) => setState(() {
-                            _selectedType = value;
-                            _updateFormula();
-                          }),
+                          onChanged: (value) async {
+                            if (_selectedType != null && value != _selectedType) {
+                              final confirmReset = await showDialog<bool>(
+                                context: context,
+                                builder: (dialogContext) => AlertDialog(
+                                  title: const Text('Reset Wizard?'),
+                                  content: const Text('Changing the injection type will reset the wizard. Continue?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(dialogContext, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(dialogContext, true),
+                                      child: const Text('Confirm'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmReset != true) return;
+                            }
+                            setState(() {
+                              _selectedType = value;
+                              _updateFormula();
+                            });
+                          },
                           items: [
                             MedicationType.readyToUseVial,
                             MedicationType.powderVial,
