@@ -28,19 +28,19 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
     Widget stepper;
     switch (_selectedType!) {
       case 'Tablet':
-        stepper = const TabletStepper();
+        stepper = TabletStepper(initialType: _selectedType!);
         break;
       case 'Capsule':
-        stepper = const CapsuleStepper();
+        stepper = CapsuleStepper(initialType: _selectedType!);
         break;
       case 'Injection':
-        stepper = const InjectionStepper();
+        stepper = InjectionStepper(initialType: _selectedType!);
         break;
       case 'Ready-to-Use Vial':
-        stepper = const ReadyToUseVialStepper();
+        stepper = ReadyToUseVialStepper(initialType: _selectedType!);
         break;
       case 'Powder Vial':
-        stepper = const PowderVialStepper();
+        stepper = PowderVialStepper(initialType: _selectedType!);
         break;
       default:
         return;
@@ -76,24 +76,30 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      DropdownButtonFormField<String>(
-                        value: _selectedType,
-                        hint: const Text('Choose a medication type'),
-                        onChanged: (value) => setState(() => _selectedType = value),
-                        items: [
-                          'Tablet',
-                          'Capsule',
-                          'Injection',
-                          'Ready-to-Use Vial',
-                          'Powder Vial',
-                        ].map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
-                        isExpanded: true,
-                        decoration: StepperConstants.dropdownDecoration, // Rounded corners
+                      ClipRRect( // Add ClipRRect
+                        borderRadius: BorderRadius.circular(12),
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedType,
+                          hint: Text(
+                            'Choose a medication type',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          onChanged: (value) => setState(() => _selectedType = value),
+                          items: [
+                            'Tablet',
+                            'Capsule',
+                            'Injection',
+                            'Ready-to-Use Vial',
+                            'Powder Vial',
+                          ].map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
+                          isExpanded: true,
+                          decoration: StepperConstants.dropdownDecoration,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
                         'Select the type of medication to add.',
-                        style: StepperConstants.instructionTextStyle, // Blue
+                        style: StepperConstants.instructionTextStyle,
                       ),
                     ],
                   ),

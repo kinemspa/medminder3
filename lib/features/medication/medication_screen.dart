@@ -1,9 +1,10 @@
+// lib/features/medication/medication_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/widgets/custom_app_bar.dart';
+import '../../core/widgets/app_header.dart';
 import '../../data/database/database.dart';
 import '../../data/providers.dart';
-import '../../data/repositories/medication_repository.dart';
+import '../dose/add_dose_screen.dart'; // Updated import
 import 'add_medication_screen.dart';
 
 class MedicationScreen extends ConsumerWidget {
@@ -12,89 +13,134 @@ class MedicationScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final medications = ref.watch(medicationRepositoryProvider).watchMedications();
-    return Scaffold(
-      appBar: CustomAppBar(
-        title: 'Medications',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AddMedicationScreen()),
+    return StreamBuilder<List<Medication>>(
+      stream: medications,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('To Get started, Add a medication.'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AddMedicationScreen()),
+                  ),
+                  child: const Text('Add Medication'),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
-      body: StreamBuilder<List<Medication>>(
-        stream: medications,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('To Get started, Add a medication.'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AddMedicationScreen()),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16.0),
+          itemCount: snapshot.data!.length,
+          itemBuilder: (context, index) {
+            final med = snapshot.data![index];
+            return StreamBuilder<List<Dose>>(
+              stream: ref.watch(medicationRepositoryProvider).watchDoses(med.id),
+              builder: (context, doseSnapshot) {
+                final hasDoses = doseSnapshot.hasData && doseSnapshot.data!.isNotEmpty;
+                return Card(
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue[50]!, Colors.white],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Text('Add Medication'),
-                  ),
-                ],
-              ),
-            );
-          }
-          return ListView.builder(
-            itemCount: snapshot.data!.length,
-            itemBuilder: (context, index) {
-              final med = snapshot.data![index];
-              return Card(
-                child: ListTile(
-                  title: Text(med.name),
-                  subtitle: Text(
-                    '${med.strength} ${med.strengthUnit}, Stock: ${med.quantity} ${med.volumeUnit ?? 'units'}',
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete),
-                    onPressed: () => showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text('Delete ${med.name}?'),
-                        content: const Text('This will delete the medication, its doses, and schedules. Historical data will remain.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(16),
+                      title: Text(
+                        med.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${med.strength} ${med.strengthUnit}, Stock: ${med.quantity} ${med.volumeUnit ?? 'units'}',
                           ),
-                          TextButton(
-                            onPressed: () async {
-                              await ref.read(medicationRepositoryProvider).deleteMedication(med.id);
-                              Navigator.pop(context);
-                            },
-                            child: const Text('Delete'),
-                          ),
+                          if (!hasDoses) ...[
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Add your first Dose to begin Scheduling',
+                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AddDoseScreen(medicationId: med.id),
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 36),
+                              ),
+                              child: const Text('Add Dose'),
+                            ),
+                          ],
                         ],
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => showDialog(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: Text( // Remove const
+                              'Delete ${med.name}?',
+                              style: const TextStyle(
+                                color: Color(0xFF1E88E5),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                              ),
+                            ),
+                            content: const Text(
+                              'This will delete the medication, its doses, and schedules. Historical data will remain.',
+                            ),
+                            actions: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      await ref.read(medicationRepositoryProvider).deleteMedication(med.id);
+                                      if (dialogContext.mounted) {
+                                        Navigator.pop(dialogContext);
+                                      }
+                                    },
+                                    child: const Text('Delete'),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(dialogContext),
+                                    child: const Text('Cancel'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AddMedicationScreen()),
-        ),
-        child: const Icon(Icons.add),
-      ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -10,7 +10,8 @@ import '../../../data/database/database.dart';
 import '../../../data/providers.dart';
 
 class CapsuleStepper extends ConsumerStatefulWidget {
-  const CapsuleStepper({super.key});
+  final String initialType;
+  const CapsuleStepper({required this.initialType, super.key});
 
   @override
   _CapsuleStepperState createState() => _CapsuleStepperState();
