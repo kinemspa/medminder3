@@ -1,11 +1,13 @@
+// lib/features/medication/steppers/tablet_stepper.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../../core/constants.dart';
+import '../../../core/widgets/app_header.dart';
 import '../../../core/widgets/custom_integer_field.dart';
+import '../../../core/stepper_constants.dart';
 import '../../../data/database/database.dart';
 import '../../../data/providers.dart';
-import '../../../data/repositories/medication_repository.dart';
 
 class TabletStepper extends ConsumerStatefulWidget {
   const TabletStepper({super.key});
@@ -16,10 +18,12 @@ class TabletStepper extends ConsumerStatefulWidget {
 
 class _TabletStepperState extends ConsumerState<TabletStepper> {
   int _currentStep = 0;
+  String _type = 'Tablet';
   String _name = '';
   double _strength = 0.01;
   String _strengthUnit = AppConstants.tabletStrengthUnits[1]; // Default to mg
   double _quantity = 1.0;
+  bool _enableLowStock = false;
   double _lowStockThreshold = AppConstants.defaultLowStockThreshold;
   bool _offerRefill = true;
   String _notificationType = 'default';
@@ -28,76 +32,99 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
   double? _referenceTablets;
   String? _errorMessage;
 
-  bool get _isLastStep => _currentStep == 2;
+  bool get _isLastStep => _currentStep == 5;
 
   bool _validateStep() {
     setState(() => _errorMessage = null);
-    if (_currentStep == 0 && _name.isEmpty) {
+    if (_currentStep == 1 && _name.isEmpty) {
       setState(() => _errorMessage = 'Name is required');
       return false;
     }
-    if (_currentStep == 0 && (_strength < AppConstants.minValue || _strength > AppConstants.maxValue)) {
+    if (_currentStep == 2 && (_strength < AppConstants.minValue || _strength > AppConstants.maxValue)) {
       setState(() => _errorMessage = 'Strength must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 1 && (_quantity < AppConstants.minValue || _quantity > AppConstants.maxValue)) {
+    if (_currentStep == 3 && (_quantity < AppConstants.minValue || _quantity > AppConstants.maxValue)) {
       setState(() => _errorMessage = 'Quantity must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 1 && (_lowStockThreshold < AppConstants.minValue || _lowStockThreshold > AppConstants.maxValue)) {
+    if (_currentStep == 4 && _enableLowStock && (_lowStockThreshold < AppConstants.minValue || _lowStockThreshold > AppConstants.maxValue)) {
       setState(() => _errorMessage = 'Threshold must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 2 && _addReferenceDose && (_referenceStrength == null || _referenceStrength! <= 0)) {
+    if (_currentStep == 5 && _addReferenceDose && (_referenceStrength == null || _referenceStrength! <= 0)) {
       setState(() => _errorMessage = 'Reference dose strength is required');
       return false;
     }
     return true;
   }
 
-  void _saveMedication() {
-    showDialog(
+  Future<bool> _checkNameUniqueness() async {
+    final medications = await ref.read(medicationRepositoryProvider).getMedicationsByType('tablet');
+    final exists = medications.any((med) => med.name.toLowerCase() == _name.toLowerCase());
+    if (exists) {
+      setState(() => _errorMessage = 'A tablet with this name already exists');
+      return false;
+    }
+    return true;
+  }
+
+  void _saveMedication() async {
+    if (!mounted) return;
+    if (!await _checkNameUniqueness()) return;
+    await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Confirm Medication'),
         content: Text(
           'Name: $_name\n'
               'Type: Tablet\n'
               'Strength: $_strength $_strengthUnit per tablet\n'
               'Quantity: $_quantity tablets\n'
-              'Low Stock Threshold: $_lowStockThreshold tablets\n'
+              'Total Medicine: ${_quantity * _strength} $_strengthUnit\n'
+              'Low Stock Notifications: ${_enableLowStock ? 'Enabled ($_lowStockThreshold tablets)' : 'Disabled'}\n'
               'Offer Refill: ${_offerRefill ? 'Yes' : 'No'}\n'
               'Notification Type: $_notificationType\n'
               '${_addReferenceDose ? 'Reference Dose: $_referenceStrength $_strengthUnit ($_referenceTablets tablets)' : 'No Reference Dose'}',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              try {
-                final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
-                final med = MedicationsCompanion(
-                  name: Value(_name),
-                  type: const Value('tablet'),
-                  strength: Value(_strength),
-                  strengthUnit: Value(_strengthUnit),
-                  quantity: Value(_quantity),
-                  volumeUnit: const Value('Tablet'),
-                  referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit ($_referenceTablets tablets)' : null),
-                  lowStockThreshold: Value(_lowStockThreshold > 0 ? _lowStockThreshold : defaultThreshold),
-                );
-                await ref.read(medicationRepositoryProvider).addMedication(med);
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Close stepper
-              } catch (e) {
-                Navigator.pop(context); // Close dialog
-                setState(() => _errorMessage = 'Failed to save: $e');
-              }
-            },
-            child: const Text('Save'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 16),
+              TextButton(
+                onPressed: () async {
+                  try {
+                    final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
+                    final med = MedicationsCompanion(
+                      name: Value(_name),
+                      type: const Value('tablet'),
+                      strength: Value(_strength),
+                      strengthUnit: Value(_strengthUnit),
+                      quantity: Value(_quantity),
+                      volumeUnit: const Value('Tablet'),
+                      referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit ($_referenceTablets tablets)' : null),
+                      lowStockThreshold: Value(_enableLowStock ? _lowStockThreshold : defaultThreshold),
+                    );
+                    await ref.read(medicationRepositoryProvider).addMedication(med);
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext); // Close dialog
+                      Navigator.pop(context); // Close stepper
+                    }
+                  } catch (e) {
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext); // Close dialog
+                    }
+                    setState(() => _errorMessage = 'Failed to save: $e');
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
           ),
         ],
       ),
@@ -107,7 +134,7 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: 'Add Tablet'),
+      appBar: const AppHeader(title: 'Add Tablet'),
       body: Column(
         children: [
           if (_errorMessage != null)
@@ -135,16 +162,54 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
               },
               steps: [
                 Step(
-                  title: const Text('Details'),
+                  title: const Text(
+                    'Select Medication Type',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
                   content: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        initialValue: _type,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Medication Type',
+                          helperText: 'Selected type: Tablet',
+                          helperStyle: StepperConstants.instructionTextStyle,
+                        ),
+                      ),
+                    ],
+                  ),
+                  isActive: _currentStep >= 0,
+                ),
+                Step(
+                  title: const Text(
+                    'Enter Medication Name',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
+                  content: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       TextField(
                         decoration: const InputDecoration(
                           labelText: 'Medication Name',
                           helperText: 'Enter the name of the tablet (e.g., Ibuprofen).',
+                          helperStyle: StepperConstants.instructionTextStyle,
                         ),
                         onChanged: (value) => setState(() => _name = value),
                       ),
+                    ],
+                  ),
+                  isActive: _currentStep >= 1,
+                ),
+                Step(
+                  title: const Text(
+                    'Enter Strength per Tablet',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
+                  content: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       CustomIntegerField(
                         label: 'Strength per Tablet',
                         helperText: 'Enter the strength of each tablet (e.g., 200 mg).',
@@ -156,10 +221,15 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                       ),
                     ],
                   ),
+                  isActive: _currentStep >= 2,
                 ),
                 Step(
-                  title: const Text('Stock & Notifications'),
+                  title: const Text(
+                    'Enter Stock Quantity',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
                   content: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       CustomIntegerField(
                         label: 'Quantity (Tablets in Stock)',
@@ -167,44 +237,78 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                         initialValue: _quantity,
                         onChanged: (value) => setState(() => _quantity = value),
                       ),
-                      CustomIntegerField(
-                        label: 'Low Stock Threshold (Tablets)',
-                        helperText: 'Set the number of tablets remaining to trigger a reminder.',
-                        initialValue: _lowStockThreshold,
-                        onChanged: (value) => setState(() => _lowStockThreshold = value),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          'Total Medicine: ${_quantity * _strength} $_strengthUnit',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          softWrap: true,
+                          overflow: TextOverflow.visible,
+                        ),
                       ),
-                      CheckboxListTile(
+                    ],
+                  ),
+                  isActive: _currentStep >= 3,
+                ),
+                Step(
+                  title: const Text(
+                    'Low Stock Notifications',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
+                  content: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Enable Low Stock Notifications'),
+                        subtitle: const Text('Receive alerts when stock is low.'),
+                        value: _enableLowStock,
+                        onChanged: (value) => setState(() => _enableLowStock = value),
+                      ),
+                      if (_enableLowStock)
+                        CustomIntegerField(
+                          label: 'Low Stock Threshold (Tablets)',
+                          helperText: 'Set the number of tablets remaining to trigger a reminder.',
+                          initialValue: _lowStockThreshold,
+                          onChanged: (value) => setState(() => _lowStockThreshold = value),
+                        ),
+                      SwitchListTile(
                         title: const Text('Offer Refill Option'),
                         subtitle: const Text('Include a refill prompt in low stock notifications.'),
                         value: _offerRefill,
-                        onChanged: (value) => setState(() => _offerRefill = value!),
+                        onChanged: (value) => setState(() => _offerRefill = value),
                       ),
-                      DropdownButton<String>(
+                      DropdownButtonFormField<String>(
                         value: _notificationType,
                         onChanged: (value) => setState(() => _notificationType = value!),
                         items: ['default', 'urgent', 'silent']
                             .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
                             .toList(),
                         isExpanded: true,
+                        decoration: StepperConstants.dropdownDecoration,
                         hint: const Text('Select notification type'),
                       ),
                       const SizedBox(height: 8),
                       const Text(
                         'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
-                        style: TextStyle(color: Colors.black54, fontSize: 12),
+                        style: StepperConstants.instructionTextStyle,
                       ),
                     ],
                   ),
+                  isActive: _currentStep >= 4,
                 ),
                 Step(
-                  title: const Text('Reference Dose'),
+                  title: const Text(
+                    'Set Reference Dose',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
                   content: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CheckboxListTile(
+                      SwitchListTile(
                         title: const Text('Set Reference Dose'),
                         subtitle: const Text('Define a typical dose for this medication.'),
                         value: _addReferenceDose,
-                        onChanged: (value) => setState(() => _addReferenceDose = value!),
+                        onChanged: (value) => setState(() => _addReferenceDose = value),
                       ),
                       if (_addReferenceDose) ...[
                         CustomIntegerField(
@@ -234,24 +338,14 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                       ],
                     ],
                   ),
+                  isActive: _currentStep >= 5,
                 ),
               ],
-              controlsBuilder: (context, details) {
-                return Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: details.onStepContinue,
-                      child: Text(_isLastStep ? 'Save' : 'Continue'),
-                    ),
-                    const SizedBox(width: 8),
-                    if (_currentStep > 0)
-                      TextButton(
-                        onPressed: details.onStepCancel,
-                        child: const Text('Back'),
-                      ),
-                  ],
-                );
-              },
+              controlsBuilder: (context, details) => StepperConstants.controlsBuilder(
+                context,
+                details,
+                isLastStep: _isLastStep,
+              ),
             ),
           ),
         ],

@@ -1,11 +1,13 @@
+// lib/features/medication/steppers/ready_to_use_vial_stepper.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../../core/constants.dart';
-import '/../../core/widgets/custom_integer_field.dart';
+import '../../../core/widgets/app_header.dart';
+import '../../../core/widgets/custom_integer_field.dart';
+import '../../../core/stepper_constants.dart';
 import '../../../data/database/database.dart';
 import '../../../data/providers.dart';
-import '../../../data/repositories/medication_repository.dart';
 
 class ReadyToUseVialStepper extends ConsumerStatefulWidget {
   const ReadyToUseVialStepper({super.key});
@@ -16,12 +18,13 @@ class ReadyToUseVialStepper extends ConsumerStatefulWidget {
 
 class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
   int _currentStep = 0;
+  String _type = 'Ready-to-Use Vial';
   String _name = '';
   double _strength = 1.0;
   String _strengthUnit = AppConstants.injectionStrengthUnits[1]; // Default to mg/mL
   double _fluidVolume = 1.0;
   String _volumeUnit = AppConstants.volumeUnits[0]; // Default to mL
-  bool _enableLowStockReminder = false;
+  bool _enableLowStock = false;
   double _lowStockThreshold = AppConstants.defaultLowStockThreshold;
   bool _offerRefill = true;
   String _notificationType = 'default';
@@ -30,74 +33,99 @@ class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
   double _referenceSyringeAmount = 1.0;
   String? _errorMessage;
 
-  bool get _isLastStep => _currentStep == 3;
+  bool get _isLastStep => _currentStep == 5;
 
   bool _validateStep() {
     setState(() => _errorMessage = null);
-    if (_currentStep == 0 && _name.isEmpty) {
+    if (_currentStep == 1 && _name.isEmpty) {
       setState(() => _errorMessage = 'Name is required');
       return false;
     }
-    if (_currentStep == 1 && (_strength < AppConstants.minValue || _strength > AppConstants.maxValue)) {
+    if (_currentStep == 2 && (_strength < AppConstants.minValue || _strength > AppConstants.maxValue)) {
       setState(() => _errorMessage = 'Strength must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 2 && (_fluidVolume < AppConstants.minValue || _fluidVolume > AppConstants.maxValue)) {
+    if (_currentStep == 3 && (_fluidVolume < AppConstants.minValue || _fluidVolume > AppConstants.maxValue)) {
       setState(() => _errorMessage = 'Volume must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 2 && _enableLowStockReminder && (_lowStockThreshold < AppConstants.minValue || _lowStockThreshold > AppConstants.maxValue)) {
+    if (_currentStep == 4 && _enableLowStock && (_lowStockThreshold < AppConstants.minValue || _lowStockThreshold > AppConstants.maxValue)) {
       setState(() => _errorMessage = 'Threshold must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 3 && _addReferenceDose && (_referenceStrength < AppConstants.minValue || _referenceStrength > AppConstants.maxValue)) {
+    if (_currentStep == 5 && _addReferenceDose && (_referenceStrength < AppConstants.minValue || _referenceStrength > AppConstants.maxValue)) {
       setState(() => _errorMessage = 'Reference dose strength is required');
       return false;
     }
     return true;
   }
 
-  void _saveMedication() {
-    showDialog(
+  Future<bool> _checkNameUniqueness() async {
+    final medications = await ref.read(medicationRepositoryProvider).getMedicationsByType('readyToUseVial');
+    final exists = medications.any((med) => med.name.toLowerCase() == _name.toLowerCase());
+    if (exists) {
+      setState(() => _errorMessage = 'A ready-to-use vial with this name already exists');
+      return false;
+    }
+    return true;
+  }
+
+  void _saveMedication() async {
+    if (!mounted) return;
+    if (!await _checkNameUniqueness()) return;
+    await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Confirm Medication'),
         content: Text(
           'Name: $_name\n'
               'Type: Ready-to-Use Vial\n'
               'Strength: $_strength $_strengthUnit\n'
               'Fluid Volume: $_fluidVolume $_volumeUnit\n'
-              '${_enableLowStockReminder ? 'Low Stock Threshold: $_lowStockThreshold $_volumeUnit\nOffer Refill: ${_offerRefill ? 'Yes' : 'No'}\nNotification Type: $_notificationType' : 'No Low Stock Reminder'}\n'
+              'Total Medicine: ${_fluidVolume * _strength} ${_strengthUnit.replaceAll('/mL', '')}\n'
+              'Low Stock Notifications: ${_enableLowStock ? 'Enabled ($_lowStockThreshold $_volumeUnit)' : 'Disabled'}\n'
+              'Offer Refill: ${_offerRefill ? 'Yes' : 'No'}\n'
+              'Notification Type: $_notificationType\n'
               '${_addReferenceDose ? 'Reference Dose: $_referenceStrength ${_strengthUnit.replaceAll('/mL', '')} ($_referenceSyringeAmount mL)' : 'No Reference Dose'}',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              try {
-                final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
-                final med = MedicationsCompanion(
-                  name: Value(_name),
-                  type: const Value('readyToUseVial'),
-                  strength: Value(_strength),
-                  strengthUnit: Value(_strengthUnit),
-                  quantity: Value(_fluidVolume),
-                  volumeUnit: Value(_volumeUnit),
-                  referenceDose: Value(_addReferenceDose ? '$_referenceStrength ${_strengthUnit.replaceAll('/mL', '')} ($_referenceSyringeAmount mL)' : null),
-                  lowStockThreshold: Value(_enableLowStockReminder ? _lowStockThreshold : defaultThreshold),
-                );
-                await ref.read(medicationRepositoryProvider).addMedication(med);
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Close stepper
-              } catch (e) {
-                Navigator.pop(context); // Close dialog
-                setState(() => _errorMessage = 'Failed to save: $e');
-              }
-            },
-            child: const Text('Save'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 16),
+              TextButton(
+                onPressed: () async {
+                  try {
+                    final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
+                    final med = MedicationsCompanion(
+                      name: Value(_name),
+                      type: const Value('readyToUseVial'),
+                      strength: Value(_strength),
+                      strengthUnit: Value(_strengthUnit),
+                      quantity: Value(_fluidVolume),
+                      volumeUnit: Value(_volumeUnit),
+                      referenceDose: Value(_addReferenceDose ? '$_referenceStrength ${_strengthUnit.replaceAll('/mL', '')} ($_referenceSyringeAmount mL)' : null),
+                      lowStockThreshold: Value(_enableLowStock ? _lowStockThreshold : defaultThreshold),
+                    );
+                    await ref.read(medicationRepositoryProvider).addMedication(med);
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext); // Close dialog
+                      Navigator.pop(context); // Close stepper
+                    }
+                  } catch (e) {
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext); // Close dialog
+                      setState(() => _errorMessage = 'Failed to save: $e');
+                    }
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
           ),
         ],
       ),
@@ -107,7 +135,7 @@ class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Ready-to-Use Vial')),
+      appBar: const AppHeader(title: 'Add Ready-to-Use Vial'),
       body: Column(
         children: [
           if (_errorMessage != null)
@@ -133,10 +161,33 @@ class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
                   Navigator.pop(context);
                 }
               },
-              onStepTapped: (step) => setState(() => _currentStep = step),
               steps: [
                 Step(
-                  title: const Text('Medication Name'),
+                  title: const Text(
+                    'Select Medication Type',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
+                  content: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        initialValue: _type,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Medication Type',
+                          helperText: 'Selected type: Ready-to-Use Vial',
+                          helperStyle: StepperConstants.instructionTextStyle,
+                        ),
+                      ),
+                    ],
+                  ),
+                  isActive: _currentStep >= 0,
+                ),
+                Step(
+                  title: const Text(
+                    'Enter Medication Name',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -144,15 +195,19 @@ class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
                         decoration: const InputDecoration(
                           labelText: 'Name',
                           helperText: 'Enter the name of the medication (e.g., BPC-157).',
+                          helperStyle: StepperConstants.instructionTextStyle,
                         ),
                         onChanged: (value) => setState(() => _name = value),
                       ),
                     ],
                   ),
-                  isActive: _currentStep >= 0,
+                  isActive: _currentStep >= 1,
                 ),
                 Step(
-                  title: const Text('Strength per Vial'),
+                  title: const Text(
+                    'Enter Strength per Vial',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -167,10 +222,13 @@ class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
                       ),
                     ],
                   ),
-                  isActive: _currentStep >= 1,
+                  isActive: _currentStep >= 2,
                 ),
                 Step(
-                  title: const Text('Stock & Notifications'),
+                  title: const Text(
+                    'Enter Fluid Volume',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -183,54 +241,78 @@ class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
                         onChanged: (value) => setState(() => _fluidVolume = value),
                         onUnitChanged: (unit) => setState(() => _volumeUnit = unit),
                       ),
-                      CheckboxListTile(
-                        title: const Text('Enable Low Stock Reminder'),
-                        subtitle: const Text('Receive notifications when stock is low.'),
-                        value: _enableLowStockReminder,
-                        onChanged: (value) => setState(() => _enableLowStockReminder = value!),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          'Total Medicine: ${_fluidVolume * _strength} ${_strengthUnit.replaceAll('/mL', '')}',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          softWrap: true,
+                          overflow: TextOverflow.visible,
+                        ),
                       ),
-                      if (_enableLowStockReminder) ...[
+                    ],
+                  ),
+                  isActive: _currentStep >= 3,
+                ),
+                Step(
+                  title: const Text(
+                    'Low Stock Notifications',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
+                  content: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Enable Low Stock Notifications'),
+                        subtitle: const Text('Receive alerts when stock is low.'),
+                        value: _enableLowStock,
+                        onChanged: (value) => setState(() => _enableLowStock = value),
+                      ),
+                      if (_enableLowStock)
                         CustomIntegerField(
                           label: 'Low Stock Threshold',
                           helperText: 'Set the remaining volume to trigger a reminder (e.g., 1 mL).',
                           initialValue: _lowStockThreshold,
                           onChanged: (value) => setState(() => _lowStockThreshold = value),
                         ),
-                        CheckboxListTile(
-                          title: const Text('Offer Refill Option'),
-                          subtitle: const Text('Include a refill prompt in low stock notifications.'),
-                          value: _offerRefill,
-                          onChanged: (value) => setState(() => _offerRefill = value!),
-                        ),
-                        DropdownButton<String>(
-                          value: _notificationType,
-                          onChanged: (value) => setState(() => _notificationType = value!),
-                          items: ['default', 'urgent', 'silent']
-                              .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
-                              .toList(),
-                          isExpanded: true,
-                          hint: const Text('Select notification type'),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
-                          style: TextStyle(color: Colors.black54, fontSize: 12),
-                        ),
-                      ],
+                      SwitchListTile(
+                        title: const Text('Offer Refill Option'),
+                        subtitle: const Text('Include a refill prompt in low stock notifications.'),
+                        value: _offerRefill,
+                        onChanged: (value) => setState(() => _offerRefill = value),
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: _notificationType,
+                        onChanged: (value) => setState(() => _notificationType = value!),
+                        items: ['default', 'urgent', 'silent']
+                            .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
+                            .toList(),
+                        isExpanded: true,
+                        decoration: StepperConstants.dropdownDecoration,
+                        hint: const Text('Select notification type'),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
+                        style: StepperConstants.instructionTextStyle,
+                      ),
                     ],
                   ),
-                  isActive: _currentStep >= 2,
+                  isActive: _currentStep >= 4,
                 ),
                 Step(
-                  title: const Text('Reference Dose'),
+                  title: const Text(
+                    'Set Reference Dose',
+                    style: StepperConstants.stepTitleStyle,
+                  ),
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CheckboxListTile(
+                      SwitchListTile(
                         title: const Text('Set Reference Dose'),
                         subtitle: const Text('Define a typical dose for this medication.'),
                         value: _addReferenceDose,
-                        onChanged: (value) => setState(() => _addReferenceDose = value!),
+                        onChanged: (value) => setState(() => _addReferenceDose = value),
                       ),
                       if (_addReferenceDose) ...[
                         CustomIntegerField(
@@ -256,25 +338,14 @@ class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
                       ],
                     ],
                   ),
-                  isActive: _currentStep >= 3,
+                  isActive: _currentStep >= 5,
                 ),
               ],
-              controlsBuilder: (context, details) {
-                return Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: details.onStepContinue,
-                      child: Text(_isLastStep ? 'Save' : 'Continue'),
-                    ),
-                    const SizedBox(width: 8),
-                    if (_currentStep > 0)
-                      TextButton(
-                        onPressed: details.onStepCancel,
-                        child: const Text('Back'),
-                      ),
-                  ],
-                );
-              },
+              controlsBuilder: (context, details) => StepperConstants.controlsBuilder(
+                context,
+                details,
+                isLastStep: _isLastStep,
+              ),
             ),
           ),
         ],
