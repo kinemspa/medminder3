@@ -43,6 +43,8 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
       case MedicationType.powderVial:
         stepper = PowderVialStepper(initialType: widget.initialType);
         break;
+      default:
+        return;
     }
     Navigator.push(context, MaterialPageRoute(builder: (_) => stepper));
   }
