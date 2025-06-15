@@ -117,16 +117,19 @@ class HomeContent extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.check),
-                          onPressed: () => _showLogDoseDialog(context, ref, db, scheduledDose, dose, med),
+                          icon: const Icon(Icons.medication),
+                          onPressed: () => _showTakeDoseDialog(context, ref, db, scheduledDose, dose, med),
+                          tooltip: 'Take',
                         ),
                         IconButton(
                           icon: const Icon(Icons.timer),
-                          onPressed: () => _showPostponeDialog(context, ref, scheduledDose),
+                          onPressed: () => _showSnoozeDialog(context, ref, scheduledDose),
+                          tooltip: 'Snooze',
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete),
                           onPressed: () => _showCancelDoseDialog(context, ref, scheduledDose, med),
+                          tooltip: 'Cancel',
                         ),
                       ],
                     ),
@@ -150,13 +153,13 @@ class HomeContent extends ConsumerWidget {
     return {'dose': dose, 'med': med};
   }
 
-  void _showLogDoseDialog(
+  void _showTakeDoseDialog(
       BuildContext context, WidgetRef ref, AppDatabase db, ScheduledDose scheduledDose, Dose dose, Medication med) {
     String notes = '';
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Log Dose: ${med.name}'),
+        title: Text('Take Dose: ${med.name}'),
         content: TextField(
           decoration: const InputDecoration(labelText: 'Notes (optional)'),
           onChanged: (value) => notes = value,
@@ -190,7 +193,7 @@ class HomeContent extends ConsumerWidget {
     );
   }
 
-  void _showPostponeDialog(BuildContext context, WidgetRef ref, ScheduledDose scheduledDose) {
+  void _showSnoozeDialog(BuildContext context, WidgetRef ref, ScheduledDose scheduledDose) {
     final defaultMinutes = ref.read(defaultPostponeMinutesProvider);
     TimeOfDay selectedTime =
     TimeOfDay.fromDateTime(scheduledDose.scheduledTime.add(Duration(minutes: defaultMinutes)));
@@ -198,7 +201,7 @@ class HomeContent extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Postpone Dose'),
+          title: const Text('Snooze Dose'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -226,7 +229,7 @@ class HomeContent extends ConsumerWidget {
                   await ref.read(scheduledDoseRepositoryProvider).postponeDose(scheduledDose.id, newTime);
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Dose postponed successfully.')),
+                    const SnackBar(content: Text('Dose snoozed successfully.')),
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(

@@ -8,7 +8,7 @@ import '../../data/database/database.dart';
 import '../../data/repositories/medication_repository.dart';
 import '../../data/repositories/dose_repository.dart';
 import '../../data/repositories/schedule_repository.dart';
-import 'add_medication_stepper.dart';
+import 'add_medication_screen.dart';
 
 class MedicationScreen extends ConsumerWidget {
   const MedicationScreen({super.key});
@@ -27,7 +27,7 @@ class MedicationScreen extends ConsumerWidget {
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Center(
               child: ElevatedButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AddMedicationStepper())),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AddMedicationScreen())),
                 child: const Text('Add Medication'),
               ),
             );
@@ -42,7 +42,10 @@ class MedicationScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AddMedicationStepper())),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AddMedicationScreen()),
+        ),
         child: const Icon(Icons.add),
       ),
     );
