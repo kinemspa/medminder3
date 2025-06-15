@@ -6,25 +6,27 @@ import '../../data/database/database.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/medication_repository.dart';
 
-class PreFilledSyringeStepper extends ConsumerStatefulWidget {
-  const PreFilledSyringeStepper({super.key});
+class DropsStepper extends ConsumerStatefulWidget {
+  const DropsStepper({super.key});
 
   @override
-  _PreFilledSyringeStepperState createState() => _PreFilledSyringeStepperState();
+  _DropsStepperState createState() => _DropsStepperState();
 }
 
-class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeStepper> {
+class _DropsStepperState extends ConsumerState<DropsStepper> {
   int _currentStep = 0;
   String _name = '';
   double _strength = 0.01;
-  String _strengthUnit = AppConstants.injectionStrengthUnits[1]; // Default to mg
-  double _syringeSize = 1.0;
+  String _strengthUnit = AppConstants.dropsStrengthUnits[1]; // Default to mg/mL
+  double _fluidVolume = 1.0;
   String _volumeUnit = AppConstants.volumeUnits[0]; // Default to mL
-  double _quantity = 1.0;
+  double _dropsPerMl = AppConstants.defaultDropsPerMl; // Default 20 drops/mL
   double _lowStockThreshold = AppConstants.defaultLowStockThreshold;
+  bool _offerRefill = true;
+  String _notificationType = 'default';
   bool _addReferenceDose = false;
   double? _referenceStrength;
-  double? _referenceSyringeAmount;
+  double? _referenceDrops;
   String? _errorMessage;
 
   bool get _isLastStep => _currentStep == 2;
@@ -39,12 +41,12 @@ class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeSteppe
       setState(() => _errorMessage = 'Strength must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 0 && (_syringeSize < AppConstants.minValue || _syringeSize > AppConstants.maxValue)) {
-      setState(() => _errorMessage = 'Syringe size must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
+    if (_currentStep == 0 && (_fluidVolume < AppConstants.minValue || _fluidVolume > AppConstants.maxValue)) {
+      setState(() => _errorMessage = 'Fluid volume must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 1 && (_quantity < AppConstants.minValue || _quantity > AppConstants.maxValue)) {
-      setState(() => _errorMessage = 'Quantity must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
+    if (_currentStep == 0 && (_dropsPerMl < 10 || _dropsPerMl > 25)) {
+      setState(() => _errorMessage = 'Drops per mL must be between 10 and 25');
       return false;
     }
     if (_currentStep == 1 && (_lowStockThreshold < AppConstants.minValue || _lowStockThreshold > AppConstants.maxValue)) {
@@ -65,12 +67,14 @@ class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeSteppe
         title: const Text('Confirm Medication'),
         content: Text(
           'Name: $_name\n'
-              'Type: Pre-Filled Syringe\n'
-              'Strength: $_strength $_strengthUnit per syringe\n'
-              'Syringe Size: $_syringeSize $_volumeUnit\n'
-              'Quantity: $_quantity syringes\n'
-              'Low Stock Threshold: $_lowStockThreshold syringes\n'
-              '${_addReferenceDose ? 'Reference Dose: $_referenceStrength $_strengthUnit ($_referenceSyringeAmount mL)' : 'No Reference Dose'}',
+              'Type: Drops\n'
+              'Strength: $_strength $_strengthUnit\n'
+              'Fluid Volume: $_fluidVolume $_volumeUnit\n'
+              'Drops per mL: $_dropsPerMl\n'
+              'Low Stock Threshold: $_lowStockThreshold $_volumeUnit\n'
+              'Offer Refill: ${_offerRefill ? 'Yes' : 'No'}\n'
+              'Notification Type: $_notificationType\n'
+              '${_addReferenceDose ? 'Reference Dose: $_referenceStrength $_strengthUnit ($_referenceDrops drops)' : 'No Reference Dose'}',
         ),
         actions: [
           TextButton(
@@ -83,12 +87,12 @@ class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeSteppe
                 final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
                 final med = MedicationsCompanion(
                   name: Value(_name),
-                  type: const Value('pre_filled_syringe'),
+                  type: const Value('drops'),
                   strength: Value(_strength),
                   strengthUnit: Value(_strengthUnit),
-                  quantity: Value(_quantity),
+                  quantity: Value(_fluidVolume),
                   volumeUnit: Value(_volumeUnit),
-                  referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit ($_referenceSyringeAmount mL)' : null),
+                  referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit ($_referenceDrops drops)' : null),
                   lowStockThreshold: Value(_lowStockThreshold > 0 ? _lowStockThreshold : defaultThreshold),
                 );
                 await ref.read(medicationRepositoryProvider).addMedication(med);
@@ -109,7 +113,7 @@ class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeSteppe
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Pre-Filled Syringe')),
+      appBar: AppBar(title: const Text('Add Drops')),
       body: Column(
         children: [
           if (_errorMessage != null)
@@ -145,7 +149,7 @@ class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeSteppe
                         onChanged: (value) => setState(() => _name = value),
                       ),
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Strength per Syringe'),
+                        decoration: const InputDecoration(labelText: 'Strength in Bottle'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? 0.01;
@@ -155,16 +159,16 @@ class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeSteppe
                       DropdownButton<String>(
                         value: _strengthUnit,
                         onChanged: (value) => setState(() => _strengthUnit = value!),
-                        items: AppConstants.injectionStrengthUnits
+                        items: AppConstants.dropsStrengthUnits
                             .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
                             .toList(),
                       ),
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Syringe Size'),
+                        decoration: const InputDecoration(labelText: 'Total Fluid Volume in Bottle'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? 1.0;
-                          setState(() => _syringeSize = val.clamp(AppConstants.minValue, AppConstants.maxValue));
+                          setState(() => _fluidVolume = val.clamp(AppConstants.minValue, AppConstants.maxValue));
                         },
                       ),
                       DropdownButton<String>(
@@ -174,28 +178,43 @@ class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeSteppe
                             .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
                             .toList(),
                       ),
+                      TextField(
+                        decoration: const InputDecoration(
+                          labelText: 'Drops per mL (10–25)',
+                          helperText: 'Calibrate your dropper (e.g., count drops to fill 1 mL)',
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          final val = double.tryParse(value) ?? AppConstants.defaultDropsPerMl;
+                          setState(() => _dropsPerMl = val.clamp(10.0, 25.0));
+                        },
+                      ),
                     ],
                   ),
                 ),
                 Step(
-                  title: const Text('Stock'),
+                  title: const Text('Stock & Notifications'),
                   content: Column(
                     children: [
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Quantity (Syringes in Stock)'),
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          final val = double.tryParse(value) ?? 1.0;
-                          setState(() => _quantity = val.clamp(AppConstants.minValue, AppConstants.maxValue));
-                        },
-                      ),
-                      TextField(
-                        decoration: const InputDecoration(labelText: 'Low Stock Threshold'),
+                        decoration: const InputDecoration(labelText: 'Low Stock Threshold (Volume)'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? AppConstants.defaultLowStockThreshold;
                           setState(() => _lowStockThreshold = val.clamp(AppConstants.minValue, AppConstants.maxValue));
                         },
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Offer Refill Option'),
+                        value: _offerRefill,
+                        onChanged: (value) => setState(() => _offerRefill = value!),
+                      ),
+                      DropdownButton<String>(
+                        value: _notificationType,
+                        onChanged: (value) => setState(() => _notificationType = value!),
+                        items: ['default', 'urgent', 'silent']
+                            .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
+                            .toList(),
                       ),
                     ],
                   ),
@@ -217,26 +236,26 @@ class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeSteppe
                             final val = double.tryParse(value);
                             setState(() {
                               _referenceStrength = val;
-                              if (val != null && _strength > 0 && _syringeSize > 0) {
-                                _referenceSyringeAmount = (val / _strength) * _syringeSize;
+                              if (val != null && _strength > 0 && _dropsPerMl > 0) {
+                                _referenceDrops = (val / _strength) * _dropsPerMl; // mg/mL to drops
                               }
                             });
                           },
                         ),
                         TextField(
-                          decoration: const InputDecoration(labelText: 'Syringe Amount (mL)'),
+                          decoration: const InputDecoration(labelText: 'Number of Drops'),
                           keyboardType: TextInputType.number,
                           onChanged: (value) {
                             final val = double.tryParse(value);
                             setState(() {
-                              _referenceSyringeAmount = val;
-                              if (val != null && _strength > 0 && _syringeSize > 0) {
-                                _referenceStrength = (val / _syringeSize) * _strength;
+                              _referenceDrops = val;
+                              if (val != null && _strength > 0 && _dropsPerMl > 0) {
+                                _referenceStrength = (val / _dropsPerMl) * _strength; // drops to mg/mL
                               }
                             });
                           },
                           controller: TextEditingController(
-                            text: _referenceSyringeAmount?.toStringAsFixed(2) ?? '',
+                            text: _referenceDrops?.toStringAsFixed(2) ?? '',
                           ),
                         ),
                       ],
@@ -266,4 +285,8 @@ class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeSteppe
       ),
     );
   }
+}
+
+extension StringExtension on String {
+  String capitalize() => this[0].toUpperCase() + substring(1);
 }

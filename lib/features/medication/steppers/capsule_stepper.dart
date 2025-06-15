@@ -2,28 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../core/constants.dart';
-import '../../core/enums.dart';
 import '../../data/database/database.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/medication_repository.dart';
 
-class TabletStepper extends ConsumerStatefulWidget {
-  const TabletStepper({super.key});
+class CapsuleStepper extends ConsumerStatefulWidget {
+  const CapsuleStepper({super.key});
 
   @override
-  _TabletStepperState createState() => _TabletStepperState();
+  _CapsuleStepperState createState() => _CapsuleStepperState();
 }
 
-class _TabletStepperState extends ConsumerState<TabletStepper> {
+class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
   int _currentStep = 0;
   String _name = '';
   double _strength = 0.01;
   String _strengthUnit = AppConstants.tabletStrengthUnits[1]; // Default to mg
   double _quantity = 1.0;
   double _lowStockThreshold = AppConstants.defaultLowStockThreshold;
+  bool _offerRefill = true;
+  String _notificationType = 'default';
   bool _addReferenceDose = false;
   double? _referenceStrength;
-  double? _referenceTablets;
+  double? _referenceCapsules;
   String? _errorMessage;
 
   bool get _isLastStep => _currentStep == 2;
@@ -60,11 +61,13 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
         title: const Text('Confirm Medication'),
         content: Text(
           'Name: $_name\n'
-              'Type: Tablet\n'
-              'Strength: $_strength $_strengthUnit per tablet\n'
-              'Quantity: $_quantity tablets\n'
-              'Low Stock Threshold: $_lowStockThreshold tablets\n'
-              '${_addReferenceDose ? 'Reference Dose: $_referenceStrength $_strengthUnit ($_referenceTablets tablets)' : 'No Reference Dose'}',
+              'Type: Capsule\n'
+              'Strength: $_strength $_strengthUnit per capsule\n'
+              'Quantity: $_quantity capsules\n'
+              'Low Stock Threshold: $_lowStockThreshold capsules\n'
+              'Offer Refill: ${_offerRefill ? 'Yes' : 'No'}\n'
+              'Notification Type: $_notificationType\n'
+              '${_addReferenceDose ? 'Reference Dose: $_referenceStrength $_strengthUnit ($_referenceCapsules capsules)' : 'No Reference Dose'}',
         ),
         actions: [
           TextButton(
@@ -77,12 +80,12 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                 final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
                 final med = MedicationsCompanion(
                   name: Value(_name),
-                  type: const Value('tablet'),
+                  type: const Value('capsule'),
                   strength: Value(_strength),
                   strengthUnit: Value(_strengthUnit),
                   quantity: Value(_quantity),
-                  volumeUnit: const Value(null),
-                  referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit ($_referenceTablets tablets)' : null),
+                  volumeUnit: const Value('Capsule'),
+                  referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit ($_referenceCapsules capsules)' : null),
                   lowStockThreshold: Value(_lowStockThreshold > 0 ? _lowStockThreshold : defaultThreshold),
                 );
                 await ref.read(medicationRepositoryProvider).addMedication(med);
@@ -103,7 +106,7 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Tablet')),
+      appBar: AppBar(title: const Text('Add Capsule')),
       body: Column(
         children: [
           if (_errorMessage != null)
@@ -139,7 +142,7 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                         onChanged: (value) => setState(() => _name = value),
                       ),
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Strength per Tablet'),
+                        decoration: const InputDecoration(labelText: 'Strength per Capsule'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? 0.01;
@@ -157,11 +160,11 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                   ),
                 ),
                 Step(
-                  title: const Text('Stock'),
+                  title: const Text('Stock & Notifications'),
                   content: Column(
                     children: [
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Quantity (Tablets in Stock)'),
+                        decoration: const InputDecoration(labelText: 'Quantity (Capsules in Stock)'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? 1.0;
@@ -169,12 +172,24 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                         },
                       ),
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Low Stock Threshold'),
+                        decoration: const InputDecoration(labelText: 'Low Stock Threshold (Capsules)'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? AppConstants.defaultLowStockThreshold;
                           setState(() => _lowStockThreshold = val.clamp(AppConstants.minValue, AppConstants.maxValue));
                         },
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Offer Refill Option'),
+                        value: _offerRefill,
+                        onChanged: (value) => setState(() => _offerRefill = value!),
+                      ),
+                      DropdownButton<String>(
+                        value: _notificationType,
+                        onChanged: (value) => setState(() => _notificationType = value!),
+                        items: ['default', 'urgent', 'silent']
+                            .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
+                            .toList(),
                       ),
                     ],
                   ),
@@ -197,25 +212,25 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                             setState(() {
                               _referenceStrength = val;
                               if (val != null && _strength > 0) {
-                                _referenceTablets = val / _strength;
+                                _referenceCapsules = val / _strength;
                               }
                             });
                           },
                         ),
                         TextField(
-                          decoration: const InputDecoration(labelText: 'Number of Tablets'),
+                          decoration: const InputDecoration(labelText: 'Number of Capsules'),
                           keyboardType: TextInputType.number,
                           onChanged: (value) {
                             final val = double.tryParse(value);
                             setState(() {
-                              _referenceTablets = val;
+                              _referenceCapsules = val;
                               if (val != null && _strength > 0) {
                                 _referenceStrength = val * _strength;
                               }
                             });
                           },
                           controller: TextEditingController(
-                            text: _referenceTablets?.toStringAsFixed(2) ?? '',
+                            text: _referenceCapsules?.toStringAsFixed(2) ?? '',
                           ),
                         ),
                       ],
@@ -245,4 +260,8 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
       ),
     );
   }
+}
+
+extension StringExtension on String {
+  String capitalize() => this[0].toUpperCase() + substring(1);
 }

@@ -6,7 +6,7 @@ import '../../data/providers.dart';
 import '../../data/repositories/medication_repository.dart';
 import '../../data/repositories/dose_log_repository.dart';
 import '../medication/medication_screen.dart';
-import '../schedule/schedule_screen.dart';
+import '../schedules/schedule_screen.dart';
 import '../supplies/supplies_screen.dart';
 import '../insights/insights_screen.dart';
 import '../settings/settings_screen.dart';
@@ -22,11 +22,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
 
   static final List<Widget> _screens = [
-    HomeContent(),
-    MedicationScreen(),
-    ScheduleScreen(),
-    SuppliesScreen(),
-    InsightsScreen(),
+    const HomeContent(),
+    const MedicationScreen(),
+    const ScheduleScreen(),
+    const SuppliesScreen(),
+    const InsightsScreen(),
   ];
 
   void _onDestinationSelected(int index) {

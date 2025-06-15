@@ -5,30 +5,26 @@ import '../../core/constants.dart';
 import '../../data/database/database.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/medication_repository.dart';
-import '../../data/repositories/supply_repository.dart';
-import 'reconstitution_calculator.dart';
 
-class LyophilisedVialStepper extends ConsumerStatefulWidget {
-  const LyophilisedVialStepper({super.key});
+class PatchStepper extends ConsumerStatefulWidget {
+  const PatchStepper({super.key});
 
   @override
-  _LyophilisedVialStepperState createState() => _LyophilisedVialStepperState();
+  _PatchStepperState createState() => _PatchStepperState();
 }
 
-class _LyophilisedVialStepperState extends ConsumerState<LyophilisedVialStepper> {
+class _PatchStepperState extends ConsumerState<PatchStepper> {
   int _currentStep = 0;
   String _name = '';
   double _strength = 0.01;
-  String _strengthUnit = AppConstants.injectionStrengthUnits[1]; // Default to mg
-  bool _reconstitute = false;
-  double? _reconFluidAmount;
-  String _reconFluidType = 'Sterile Water';
-  bool _trackReconFluid = false;
-  double _reconFluidStock = 0.0;
+  String _strengthUnit = AppConstants.patchStrengthUnits[1]; // Default to mg
+  double _quantity = 1.0;
+  String _quantityUnit = AppConstants.quantityUnits[7]; // Default to Patch
   double _lowStockThreshold = AppConstants.defaultLowStockThreshold;
+  bool _offerRefill = true;
+  String _notificationType = 'default';
   bool _addReferenceDose = false;
   double? _referenceStrength;
-  double? _referenceSyringeAmount;
   String? _errorMessage;
 
   bool get _isLastStep => _currentStep == 2;
@@ -43,12 +39,8 @@ class _LyophilisedVialStepperState extends ConsumerState<LyophilisedVialStepper>
       setState(() => _errorMessage = 'Strength must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 1 && _reconstitute && _reconFluidAmount == null) {
-      setState(() => _errorMessage = 'Reconstitution fluid amount is required');
-      return false;
-    }
-    if (_currentStep == 1 && _trackReconFluid && (_reconFluidStock <= 0)) {
-      setState(() => _errorMessage = 'Reconstitution fluid stock must be greater than 0');
+    if (_currentStep == 1 && (_quantity < AppConstants.minValue || _quantity > AppConstants.maxValue)) {
+      setState(() => _errorMessage = 'Quantity must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
     if (_currentStep == 1 && (_lowStockThreshold < AppConstants.minValue || _lowStockThreshold > AppConstants.maxValue)) {
@@ -69,12 +61,13 @@ class _LyophilisedVialStepperState extends ConsumerState<LyophilisedVialStepper>
         title: const Text('Confirm Medication'),
         content: Text(
           'Name: $_name\n'
-              'Type: Lyophilised Vial\n'
+              'Type: Patch\n'
               'Strength: $_strength $_strengthUnit\n'
-              '${_reconstitute ? 'Reconstituted with $_reconFluidAmount mL $_reconFluidType' : 'Reconstitution Fluid: $_reconFluidAmount mL'}\n'
-              '${_trackReconFluid ? 'Reconstitution Fluid Stock: $_reconFluidStock mL' : 'Not Tracking Reconstitution Fluid'}\n'
-              'Low Stock Threshold: $_lowStockThreshold mL\n'
-              '${_addReferenceDose ? 'Reference Dose: $_referenceStrength $_strengthUnit ($_referenceSyringeAmount mL)' : 'No Reference Dose'}',
+              'Quantity: $_quantity $_quantityUnit\n'
+              'Low Stock Threshold: $_lowStockThreshold $_quantityUnit\n'
+              'Offer Refill: ${_offerRefill ? 'Yes' : 'No'}\n'
+              'Notification Type: $_notificationType\n'
+              '${_addReferenceDose ? 'Reference Dose: $_referenceStrength $_strengthUnit' : 'No Reference Dose'}',
         ),
         actions: [
           TextButton(
@@ -87,23 +80,15 @@ class _LyophilisedVialStepperState extends ConsumerState<LyophilisedVialStepper>
                 final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
                 final med = MedicationsCompanion(
                   name: Value(_name),
-                  type: const Value('lyophilised_vial'),
+                  type: const Value('patch'),
                   strength: Value(_strength),
                   strengthUnit: Value(_strengthUnit),
-                  quantity: Value(_reconFluidAmount ?? 1.0),
-                  volumeUnit: const Value('mL'),
-                  referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit ($_referenceSyringeAmount mL)' : null),
+                  quantity: Value(_quantity),
+                  volumeUnit: Value(_quantityUnit),
+                  referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit' : null),
                   lowStockThreshold: Value(_lowStockThreshold > 0 ? _lowStockThreshold : defaultThreshold),
                 );
                 await ref.read(medicationRepositoryProvider).addMedication(med);
-                if (_trackReconFluid) {
-                  final supply = SuppliesCompanion(
-                    name: Value('$_reconFluidType (for $_name)'),
-                    quantity: Value(_reconFluidStock),
-                    lowStockThreshold: Value(defaultThreshold),
-                  );
-                  await ref.read(supplyRepositoryProvider).addSupply(supply);
-                }
                 Navigator.pop(context); // Close dialog
                 Navigator.pop(context); // Close stepper
               } catch (e) {
@@ -121,7 +106,7 @@ class _LyophilisedVialStepperState extends ConsumerState<LyophilisedVialStepper>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Lyophilised Vial')),
+      appBar: AppBar(title: const Text('Add Patch')),
       body: Column(
         children: [
           if (_errorMessage != null)
@@ -157,7 +142,7 @@ class _LyophilisedVialStepperState extends ConsumerState<LyophilisedVialStepper>
                         onChanged: (value) => setState(() => _name = value),
                       ),
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Total Strength in Vial'),
+                        decoration: const InputDecoration(labelText: 'Strength per Patch'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? 0.01;
@@ -167,7 +152,7 @@ class _LyophilisedVialStepperState extends ConsumerState<LyophilisedVialStepper>
                       DropdownButton<String>(
                         value: _strengthUnit,
                         onChanged: (value) => setState(() => _strengthUnit = value!),
-                        items: AppConstants.injectionStrengthUnits
+                        items: AppConstants.patchStrengthUnits
                             .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
                             .toList(),
                       ),
@@ -175,67 +160,36 @@ class _LyophilisedVialStepperState extends ConsumerState<LyophilisedVialStepper>
                   ),
                 ),
                 Step(
-                  title: const Text('Reconstitution & Stock'),
+                  title: const Text('Stock & Notifications'),
                   content: Column(
                     children: [
-                      CheckboxListTile(
-                        title: const Text('Reconstitute with Calculator'),
-                        value: _reconstitute,
-                        onChanged: (value) => setState(() => _reconstitute = value!),
-                      ),
-                      if (_reconstitute)
-                        ElevatedButton(
-                          onPressed: () async {
-                            final result = await Navigator.push<double>(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ReconstitutionCalculator(
-                                  medicationStrength: _strength,
-                                  strengthUnit: _strengthUnit,
-                                ),
-                              ),
-                            );
-                            if (result != null) {
-                              setState(() => _reconFluidAmount = result);
-                            }
-                          },
-                          child: const Text('Open Reconstitution Calculator'),
-                        ),
-                      if (!_reconstitute)
-                        TextField(
-                          decoration: const InputDecoration(labelText: 'Reconstitution Fluid Amount (mL)'),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            final val = double.tryParse(value);
-                            setState(() => _reconFluidAmount = val);
-                          },
-                        ),
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Reconstitution Fluid Type'),
-                        onChanged: (value) => setState(() => _reconFluidType = value.isEmpty ? 'Sterile Water' : value),
-                        controller: TextEditingController(text: _reconFluidType),
+                        decoration: const InputDecoration(labelText: 'Quantity (Patches in Stock)'),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          final val = double.tryParse(value) ?? 1.0;
+                          setState(() => _quantity = val.clamp(AppConstants.minValue, AppConstants.maxValue));
+                        },
                       ),
-                      CheckboxListTile(
-                        title: const Text('Track Reconstitution Fluid in Supplies'),
-                        value: _trackReconFluid,
-                        onChanged: (value) => setState(() => _trackReconFluid = value!),
-                      ),
-                      if (_trackReconFluid)
-                        TextField(
-                          decoration: const InputDecoration(labelText: 'Reconstitution Fluid Stock (mL)'),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            final val = double.tryParse(value) ?? 0.0;
-                            setState(() => _reconFluidStock = val);
-                          },
-                        ),
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Low Stock Threshold (mL)'),
+                        decoration: const InputDecoration(labelText: 'Low Stock Threshold (Patches)'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? AppConstants.defaultLowStockThreshold;
                           setState(() => _lowStockThreshold = val.clamp(AppConstants.minValue, AppConstants.maxValue));
                         },
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Offer Refill Option'),
+                        value: _offerRefill,
+                        onChanged: (value) => setState(() => _offerRefill = value!),
+                      ),
+                      DropdownButton<String>(
+                        value: _notificationType,
+                        onChanged: (value) => setState(() => _notificationType = value!),
+                        items: ['default', 'urgent', 'silent']
+                            .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
+                            .toList(),
                       ),
                     ],
                   ),
@@ -249,37 +203,15 @@ class _LyophilisedVialStepperState extends ConsumerState<LyophilisedVialStepper>
                         value: _addReferenceDose,
                         onChanged: (value) => setState(() => _addReferenceDose = value!),
                       ),
-                      if (_addReferenceDose) ...[
+                      if (_addReferenceDose)
                         TextField(
                           decoration: const InputDecoration(labelText: 'Reference Dose Strength'),
                           keyboardType: TextInputType.number,
                           onChanged: (value) {
                             final val = double.tryParse(value);
-                            setState(() {
-                              _referenceStrength = val;
-                              if (val != null && _strength > 0 && _reconFluidAmount != null) {
-                                _referenceSyringeAmount = (val / _strength) * _reconFluidAmount!;
-                              }
-                            });
+                            setState(() => _referenceStrength = val);
                           },
                         ),
-                        TextField(
-                          decoration: const InputDecoration(labelText: 'Syringe Amount (mL)'),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            final val = double.tryParse(value);
-                            setState(() {
-                              _referenceSyringeAmount = val;
-                              if (val != null && _strength > 0 && _reconFluidAmount != null) {
-                                _referenceStrength = (val / _reconFluidAmount!) * _strength;
-                              }
-                            });
-                          },
-                          controller: TextEditingController(
-                            text: _referenceSyringeAmount?.toStringAsFixed(2) ?? '',
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -306,4 +238,8 @@ class _LyophilisedVialStepperState extends ConsumerState<LyophilisedVialStepper>
       ),
     );
   }
+}
+
+extension StringExtension on String {
+  String capitalize() => this[0].toUpperCase() + substring(1);
 }

@@ -17,6 +17,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> with SingleTick
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {}); // Refresh UI when tab changes
+    });
   }
 
   @override

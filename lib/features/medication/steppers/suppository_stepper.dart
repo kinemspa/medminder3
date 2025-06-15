@@ -6,23 +6,25 @@ import '../../data/database/database.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/medication_repository.dart';
 
-class CapsuleStepper extends ConsumerStatefulWidget {
-  const CapsuleStepper({super.key});
+class SuppositoryStepper extends ConsumerStatefulWidget {
+  const SuppositoryStepper({super.key});
 
   @override
-  _CapsuleStepperState createState() => _CapsuleStepperState();
+  _SuppositoryStepperState createState() => _SuppositoryStepperState();
 }
 
-class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
+class _SuppositoryStepperState extends ConsumerState<SuppositoryStepper> {
   int _currentStep = 0;
   String _name = '';
   double _strength = 0.01;
-  String _strengthUnit = AppConstants.tabletStrengthUnits[1]; // Default to mg
+  String _strengthUnit = AppConstants.suppositoryStrengthUnits[1]; // Default to mg
   double _quantity = 1.0;
+  String _quantityUnit = AppConstants.quantityUnits[9]; // Default to Suppository
   double _lowStockThreshold = AppConstants.defaultLowStockThreshold;
+  bool _offerRefill = true;
+  String _notificationType = 'default';
   bool _addReferenceDose = false;
   double? _referenceStrength;
-  double? _referenceCapsules;
   String? _errorMessage;
 
   bool get _isLastStep => _currentStep == 2;
@@ -59,11 +61,13 @@ class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
         title: const Text('Confirm Medication'),
         content: Text(
           'Name: $_name\n'
-              'Type: Capsule\n'
-              'Strength: $_strength $_strengthUnit per capsule\n'
-              'Quantity: $_quantity capsules\n'
-              'Low Stock Threshold: $_lowStockThreshold capsules\n'
-              '${_addReferenceDose ? 'Reference Dose: $_referenceStrength $_strengthUnit ($_referenceCapsules capsules)' : 'No Reference Dose'}',
+              'Type: Suppository\n'
+              'Strength: $_strength $_strengthUnit per suppository\n'
+              'Quantity: $_quantity $_quantityUnit\n'
+              'Low Stock Threshold: $_lowStockThreshold $_quantityUnit\n'
+              'Offer Refill: ${_offerRefill ? 'Yes' : 'No'}\n'
+              'Notification Type: $_notificationType\n'
+              '${_addReferenceDose ? 'Reference Dose: $_referenceStrength $_strengthUnit' : 'No Reference Dose'}',
         ),
         actions: [
           TextButton(
@@ -76,12 +80,12 @@ class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
                 final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
                 final med = MedicationsCompanion(
                   name: Value(_name),
-                  type: const Value('capsule'),
+                  type: const Value('suppository'),
                   strength: Value(_strength),
                   strengthUnit: Value(_strengthUnit),
                   quantity: Value(_quantity),
-                  volumeUnit: const Value(null),
-                  referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit ($_referenceCapsules capsules)' : null),
+                  volumeUnit: Value(_quantityUnit),
+                  referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit' : null),
                   lowStockThreshold: Value(_lowStockThreshold > 0 ? _lowStockThreshold : defaultThreshold),
                 );
                 await ref.read(medicationRepositoryProvider).addMedication(med);
@@ -102,7 +106,7 @@ class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Capsule')),
+      appBar: AppBar(title: const Text('Add Suppository')),
       body: Column(
         children: [
           if (_errorMessage != null)
@@ -138,7 +142,7 @@ class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
                         onChanged: (value) => setState(() => _name = value),
                       ),
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Strength per Capsule'),
+                        decoration: const InputDecoration(labelText: 'Strength per Suppository'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? 0.01;
@@ -148,7 +152,7 @@ class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
                       DropdownButton<String>(
                         value: _strengthUnit,
                         onChanged: (value) => setState(() => _strengthUnit = value!),
-                        items: AppConstants.tabletStrengthUnits
+                        items: AppConstants.suppositoryStrengthUnits
                             .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
                             .toList(),
                       ),
@@ -156,11 +160,11 @@ class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
                   ),
                 ),
                 Step(
-                  title: const Text('Stock'),
+                  title: const Text('Stock & Notifications'),
                   content: Column(
                     children: [
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Quantity (Capsules in Stock)'),
+                        decoration: const InputDecoration(labelText: 'Quantity (Suppositories in Stock)'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? 1.0;
@@ -168,12 +172,24 @@ class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
                         },
                       ),
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Low Stock Threshold'),
+                        decoration: const InputDecoration(labelText: 'Low Stock Threshold (Suppositories)'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? AppConstants.defaultLowStockThreshold;
                           setState(() => _lowStockThreshold = val.clamp(AppConstants.minValue, AppConstants.maxValue));
                         },
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Offer Refill Option'),
+                        value: _offerRefill,
+                        onChanged: (value) => setState(() => _offerRefill = value!),
+                      ),
+                      DropdownButton<String>(
+                        value: _notificationType,
+                        onChanged: (value) => setState(() => _notificationType = value!),
+                        items: ['default', 'urgent', 'silent']
+                            .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
+                            .toList(),
                       ),
                     ],
                   ),
@@ -187,37 +203,15 @@ class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
                         value: _addReferenceDose,
                         onChanged: (value) => setState(() => _addReferenceDose = value!),
                       ),
-                      if (_addReferenceDose) ...[
+                      if (_addReferenceDose)
                         TextField(
                           decoration: const InputDecoration(labelText: 'Reference Dose Strength'),
                           keyboardType: TextInputType.number,
                           onChanged: (value) {
                             final val = double.tryParse(value);
-                            setState(() {
-                              _referenceStrength = val;
-                              if (val != null && _strength > 0) {
-                                _referenceCapsules = val / _strength;
-                              }
-                            });
+                            setState(() => _referenceStrength = val);
                           },
                         ),
-                        TextField(
-                          decoration: const InputDecoration(labelText: 'Number of Capsules'),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            final val = double.tryParse(value);
-                            setState(() {
-                              _referenceCapsules = val;
-                              if (val != null && _strength > 0) {
-                                _referenceStrength = val * _strength;
-                              }
-                            });
-                          },
-                          controller: TextEditingController(
-                            text: _referenceCapsules?.toStringAsFixed(2) ?? '',
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -244,4 +238,8 @@ class _CapsuleStepperState extends ConsumerState<CapsuleStepper> {
       ),
     );
   }
+}
+
+extension StringExtension on String {
+  String capitalize() => this[0].toUpperCase() + substring(1);
 }

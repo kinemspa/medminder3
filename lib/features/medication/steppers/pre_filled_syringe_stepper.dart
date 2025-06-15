@@ -6,21 +6,24 @@ import '../../data/database/database.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/medication_repository.dart';
 
-class PreConstitutedVialStepper extends ConsumerStatefulWidget {
-  const PreConstitutedVialStepper({super.key});
+class PreFilledSyringeStepper extends ConsumerStatefulWidget {
+  const PreFilledSyringeStepper({super.key});
 
   @override
-  _PreConstitutedVialStepperState createState() => _PreConstitutedVialStepperState();
+  _PreFilledSyringeStepperState createState() => _PreFilledSyringeStepperState();
 }
 
-class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialStepper> {
+class _PreFilledSyringeStepperState extends ConsumerState<PreFilledSyringeStepper> {
   int _currentStep = 0;
   String _name = '';
   double _strength = 0.01;
-  String _strengthUnit = AppConstants.injectionStrengthUnits[1]; // Default to mg
-  double _fluidVolume = 1.0;
+  String _strengthUnit = AppConstants.injectionStrengthUnits[1]; // Default to mg/mL
+  double _syringeSize = 1.0;
   String _volumeUnit = AppConstants.volumeUnits[0]; // Default to mL
+  double _quantity = 1.0;
   double _lowStockThreshold = AppConstants.defaultLowStockThreshold;
+  bool _offerRefill = true;
+  String _notificationType = 'default';
   bool _addReferenceDose = false;
   double? _referenceStrength;
   double? _referenceSyringeAmount;
@@ -38,8 +41,12 @@ class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialSt
       setState(() => _errorMessage = 'Strength must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
-    if (_currentStep == 0 && (_fluidVolume < AppConstants.minValue || _fluidVolume > AppConstants.maxValue)) {
-      setState(() => _errorMessage = 'Fluid volume must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
+    if (_currentStep == 0 && (_syringeSize < AppConstants.minValue || _syringeSize > AppConstants.maxValue)) {
+      setState(() => _errorMessage = 'Syringe size must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
+      return false;
+    }
+    if (_currentStep == 1 && (_quantity < AppConstants.minValue || _quantity > AppConstants.maxValue)) {
+      setState(() => _errorMessage = 'Quantity must be between ${AppConstants.minValue} and ${AppConstants.maxValue}');
       return false;
     }
     if (_currentStep == 1 && (_lowStockThreshold < AppConstants.minValue || _lowStockThreshold > AppConstants.maxValue)) {
@@ -60,10 +67,13 @@ class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialSt
         title: const Text('Confirm Medication'),
         content: Text(
           'Name: $_name\n'
-              'Type: Pre-Constituted Vial\n'
+              'Type: Pre-Filled Syringe\n'
               'Strength: $_strength $_strengthUnit\n'
-              'Fluid Volume: $_fluidVolume $_volumeUnit\n'
-              'Low Stock Threshold: $_lowStockThreshold $_volumeUnit\n'
+              'Syringe Size: $_syringeSize $_volumeUnit\n'
+              'Quantity: $_quantity syringes\n'
+              'Low Stock Threshold: $_lowStockThreshold syringes\n'
+              'Offer Refill: ${_offerRefill ? 'Yes' : 'No'}\n'
+              'Notification Type: $_notificationType\n'
               '${_addReferenceDose ? 'Reference Dose: $_referenceStrength $_strengthUnit ($_referenceSyringeAmount mL)' : 'No Reference Dose'}',
         ),
         actions: [
@@ -77,10 +87,10 @@ class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialSt
                 final defaultThreshold = ref.read(defaultLowStockThresholdProvider);
                 final med = MedicationsCompanion(
                   name: Value(_name),
-                  type: const Value('pre_constituted_vial'),
+                  type: const Value('preFilledSyringe'),
                   strength: Value(_strength),
                   strengthUnit: Value(_strengthUnit),
-                  quantity: Value(_fluidVolume),
+                  quantity: Value(_quantity),
                   volumeUnit: Value(_volumeUnit),
                   referenceDose: Value(_addReferenceDose ? '$_referenceStrength $_strengthUnit ($_referenceSyringeAmount mL)' : null),
                   lowStockThreshold: Value(_lowStockThreshold > 0 ? _lowStockThreshold : defaultThreshold),
@@ -103,7 +113,7 @@ class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Pre-Constituted Vial')),
+      appBar: AppBar(title: const Text('Add Pre-Filled Syringe')),
       body: Column(
         children: [
           if (_errorMessage != null)
@@ -139,7 +149,7 @@ class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialSt
                         onChanged: (value) => setState(() => _name = value),
                       ),
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Total Strength in Vial'),
+                        decoration: const InputDecoration(labelText: 'Strength per Syringe'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? 0.01;
@@ -153,13 +163,15 @@ class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialSt
                             .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
                             .toList(),
                       ),
-                      TextField(
-                        decoration: const InputDecoration(labelText: 'Total Fluid Volume in Vial'),
-                        keyboardType: TextInputType.number,
+                      DropdownButton<String>(
+                        value: _syringeSize.toString() + 'mL',
                         onChanged: (value) {
-                          final val = double.tryParse(value) ?? 1.0;
-                          setState(() => _fluidVolume = val.clamp(AppConstants.minValue, AppConstants.maxValue));
+                          final val = double.parse(value!.replaceAll('mL', ''));
+                          setState(() => _syringeSize = val);
                         },
+                        items: AppConstants.syringeSizes
+                            .map((size) => DropdownMenuItem(value: size, child: Text(size)))
+                            .toList(),
                       ),
                       DropdownButton<String>(
                         value: _volumeUnit,
@@ -172,16 +184,36 @@ class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialSt
                   ),
                 ),
                 Step(
-                  title: const Text('Stock'),
+                  title: const Text('Stock & Notifications'),
                   content: Column(
                     children: [
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Low Stock Threshold (Volume)'),
+                        decoration: const InputDecoration(labelText: 'Quantity (Syringes in Stock)'),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          final val = double.tryParse(value) ?? 1.0;
+                          setState(() => _quantity = val.clamp(AppConstants.minValue, AppConstants.maxValue));
+                        },
+                      ),
+                      TextField(
+                        decoration: const InputDecoration(labelText: 'Low Stock Threshold (Syringes)'),
                         keyboardType: TextInputType.number,
                         onChanged: (value) {
                           final val = double.tryParse(value) ?? AppConstants.defaultLowStockThreshold;
                           setState(() => _lowStockThreshold = val.clamp(AppConstants.minValue, AppConstants.maxValue));
                         },
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Offer Refill Option'),
+                        value: _offerRefill,
+                        onChanged: (value) => setState(() => _offerRefill = value!),
+                      ),
+                      DropdownButton<String>(
+                        value: _notificationType,
+                        onChanged: (value) => setState(() => _notificationType = value!),
+                        items: ['default', 'urgent', 'silent']
+                            .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
+                            .toList(),
                       ),
                     ],
                   ),
@@ -203,8 +235,8 @@ class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialSt
                             final val = double.tryParse(value);
                             setState(() {
                               _referenceStrength = val;
-                              if (val != null && _strength > 0 && _fluidVolume > 0) {
-                                _referenceSyringeAmount = (val / _strength) * _fluidVolume;
+                              if (val != null && _strength > 0 && _syringeSize > 0) {
+                                _referenceSyringeAmount = val / _strength; // mg/mL to mL
                               }
                             });
                           },
@@ -216,8 +248,8 @@ class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialSt
                             final val = double.tryParse(value);
                             setState(() {
                               _referenceSyringeAmount = val;
-                              if (val != null && _strength > 0 && _fluidVolume > 0) {
-                                _referenceStrength = (val / _fluidVolume) * _strength;
+                              if (val != null && _strength > 0 && _syringeSize > 0) {
+                                _referenceStrength = val * _strength; // mL to mg/mL
                               }
                             });
                           },
@@ -252,4 +284,8 @@ class _PreConstitutedVialStepperState extends ConsumerState<PreConstitutedVialSt
       ),
     );
   }
+}
+
+extension StringExtension on String {
+  String capitalize() => this[0].toUpperCase() + substring(1);
 }
