@@ -8,7 +8,9 @@ import 'ready_to_use_vial_stepper.dart';
 import 'powder_vial_stepper.dart';
 
 class InjectionStepper extends ConsumerStatefulWidget {
-  const InjectionStepper({super.key});
+  final String initialType; // Add initialType
+
+  const InjectionStepper({required this.initialType, super.key});
 
   @override
   _InjectionStepperState createState() => _InjectionStepperState();
@@ -27,10 +29,10 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
     Widget stepper;
     switch (_selectedType!) {
       case MedicationType.readyToUseVial:
-        stepper = const ReadyToUseVialStepper();
+        stepper = ReadyToUseVialStepper(initialType: widget.initialType); // Pass initialType
         break;
       case MedicationType.powderVial:
-        stepper = const PowderVialStepper();
+        stepper = PowderVialStepper(initialType: widget.initialType); // Pass initialType
         break;
       default:
         return;
@@ -70,22 +72,28 @@ class _InjectionStepperState extends ConsumerState<InjectionStepper> {
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      DropdownButtonFormField<MedicationType>(
-                        value: _selectedType,
-                        hint: const Text('Choose an injection type'),
-                        onChanged: (value) => setState(() => _selectedType = value),
-                        items: [
-                          MedicationType.readyToUseVial,
-                          MedicationType.powderVial,
-                        ].map((type) {
-                          String displayName = type == MedicationType.readyToUseVial ? 'Ready-to-Use Vial' : 'Powder Vial';
-                          return DropdownMenuItem(
-                            value: type,
-                            child: Text(displayName),
-                          );
-                        }).toList(),
-                        isExpanded: true,
-                        decoration: StepperConstants.dropdownDecoration,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: DropdownButtonFormField<MedicationType>(
+                          value: _selectedType,
+                          hint: Text( // Remove const
+                            'Choose an injection type',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          onChanged: (value) => setState(() => _selectedType = value),
+                          items: [
+                            MedicationType.readyToUseVial,
+                            MedicationType.powderVial,
+                          ].map((type) {
+                            String displayName = type == MedicationType.readyToUseVial ? 'Ready-to-Use Vial' : 'Powder Vial';
+                            return DropdownMenuItem(
+                              value: type,
+                              child: Text(displayName),
+                            );
+                          }).toList(),
+                          isExpanded: true,
+                          decoration: StepperConstants.dropdownDecoration,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text(

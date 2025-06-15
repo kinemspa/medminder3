@@ -8,9 +8,12 @@ import '../../../core/widgets/custom_integer_field.dart';
 import '../../../core/stepper_constants.dart';
 import '../../../data/database/database.dart';
 import '../../../data/providers.dart';
+import '../medication_screen.dart'; // Add at top
 
 class ReadyToUseVialStepper extends ConsumerStatefulWidget {
-  const ReadyToUseVialStepper({super.key});
+  final String initialType;
+
+  const ReadyToUseVialStepper({required this.initialType, super.key});
 
   @override
   _ReadyToUseVialStepperState createState() => _ReadyToUseVialStepperState();
@@ -18,7 +21,7 @@ class ReadyToUseVialStepper extends ConsumerStatefulWidget {
 
 class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
   int _currentStep = 0;
-  String _type = 'Ready-to-Use Vial';
+  String _type = widget.initialType;
   String _name = '';
   double _strength = 1.0;
   String _strengthUnit = AppConstants.injectionStrengthUnits[1]; // Default to mg/mL
@@ -32,6 +35,7 @@ class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
   double _referenceStrength = 1.0;
   double _referenceSyringeAmount = 1.0;
   String? _errorMessage;
+   // Use initialType
 
   bool get _isLastStep => _currentStep == 5;
 
@@ -119,7 +123,11 @@ class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
                   } catch (e) {
                     if (dialogContext.mounted) {
                       Navigator.pop(dialogContext); // Close dialog
-                      setState(() => _errorMessage = 'Failed to save: $e');
+                      Navigator.pop(context); // Close stepper
+                      Navigator.pushReplacement( // Add navigation
+                        context,
+                        MaterialPageRoute(builder: (_) => const MedicationScreen()),
+                      );
                     }
                   }
                 },
@@ -281,15 +289,18 @@ class _ReadyToUseVialStepperState extends ConsumerState<ReadyToUseVialStepper> {
                         value: _offerRefill,
                         onChanged: (value) => setState(() => _offerRefill = value),
                       ),
-                      DropdownButtonFormField<String>(
-                        value: _notificationType,
-                        onChanged: (value) => setState(() => _notificationType = value!),
-                        items: ['default', 'urgent', 'silent']
-                            .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
-                            .toList(),
-                        isExpanded: true,
-                        decoration: StepperConstants.dropdownDecoration,
-                        hint: const Text('Select notification type'),
+                      ClipRRect( // Add ClipRRect
+                        borderRadius: BorderRadius.circular(12),
+                        child: DropdownButtonFormField<String>(
+                          value: _notificationType,
+                          onChanged: (value) => setState(() => _notificationType = value!),
+                          items: ['default', 'urgent', 'silent']
+                              .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
+                              .toList(),
+                          isExpanded: true,
+                          decoration: StepperConstants.dropdownDecoration,
+                          hint: Text('Select notification type', style: TextStyle(color: Colors.grey[600])), // Update hint
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text(

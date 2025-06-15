@@ -1,5 +1,6 @@
 // lib/features/medication/steppers/powder_vial_stepper.dart
 import 'package:flutter/material.dart';
+import '../medication_screen.dart'; // Add at top
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../../core/constants.dart';
@@ -8,10 +9,13 @@ import '../../../core/widgets/custom_integer_field.dart';
 import '../../../core/stepper_constants.dart';
 import '../../../data/database/database.dart';
 import '../../../data/providers.dart';
+
 import '../reconstitution_calculator.dart';
 
 class PowderVialStepper extends ConsumerStatefulWidget {
-  const PowderVialStepper({super.key});
+  final String initialType; // Add initialType
+
+  const PowderVialStepper({required this.initialType, super.key});
 
   @override
   _PowderVialStepperState createState() => _PowderVialStepperState();
@@ -19,7 +23,7 @@ class PowderVialStepper extends ConsumerStatefulWidget {
 
 class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
   int _currentStep = 0;
-  String _type = 'Powder Vial';
+  String _type = widget.initialType; // Use initialType
   String _name = '';
   double _strength = 1.0;
   String _strengthUnit = AppConstants.injectionStrengthUnits[1]; // Default to mg
@@ -116,6 +120,10 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                     if (dialogContext.mounted) {
                       Navigator.pop(dialogContext); // Close dialog
                       Navigator.pop(context); // Close stepper
+                      Navigator.pushReplacement( // Add navigation
+                        context,
+                        MaterialPageRoute(builder: (_) => const MedicationScreen()),
+                      );
                     }
                   } catch (e) {
                     if (dialogContext.mounted) {
@@ -282,15 +290,23 @@ class _PowderVialStepperState extends ConsumerState<PowderVialStepper> {
                         value: _offerRefill,
                         onChanged: (value) => setState(() => _offerRefill = value),
                       ),
-                      DropdownButtonFormField<String>(
-                        value: _notificationType,
-                        onChanged: (value) => setState(() => _notificationType = value!),
-                        items: ['default', 'urgent', 'silent']
-                            .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
-                            .toList(),
-                        isExpanded: true,
-                        decoration: StepperConstants.dropdownDecoration,
-                        hint: const Text('Select notification type'),
+                      ClipRRect( // Add ClipRRect
+                        borderRadius: BorderRadius.circular(12),
+                        child: DropdownButtonFormField<String>(
+                          value: _notificationType,
+                          onChanged: (value) => setState(() => _notificationType = value!),
+                          items: ['default', 'urgent', 'silent']
+                              .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
+                              .toList(),
+                          isExpanded: true,
+                          decoration: StepperConstants.dropdownDecoration,
+                          hint: Text('Select notification type', style: TextStyle(color: Colors.grey[600])), // Update hint
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
+                        style: StepperConstants.instructionTextStyle,
                       ),
                       const SizedBox(height: 8),
                       const Text(
