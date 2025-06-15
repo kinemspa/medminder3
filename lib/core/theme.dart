@@ -27,15 +27,15 @@ class AppTheme {
         color: Colors.white,
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        primary: _primaryColor,
-        onPrimary: Colors.white,
+        backgroundColor: _primaryColor,
+        foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -43,7 +43,7 @@ class AppTheme {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        primary: _primaryColor,
+        foregroundColor: _primaryColor,
         textStyle: const TextStyle(fontSize: 14),
       ),
     ),
@@ -51,7 +51,7 @@ class AppTheme {
       displayLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _onSurfaceColor),
       bodyLarge: TextStyle(fontSize: 16, color: _onSurfaceColor),
       bodyMedium: TextStyle(fontSize: 14, color: _onSurfaceColor),
-      caption: TextStyle(fontSize: 12, color: Colors.black54),
+      bodySmall: TextStyle(fontSize: 12, color: Colors.black54),
     ),
     inputDecorationTheme: InputDecorationTheme(
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -86,15 +86,15 @@ class AppTheme {
         color: Colors.white,
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        primary: _primaryColor,
-        onPrimary: Colors.white,
+        backgroundColor: _primaryColor,
+        foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -102,7 +102,7 @@ class AppTheme {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        primary: _primaryColor,
+        foregroundColor: _primaryColor,
         textStyle: const TextStyle(fontSize: 14),
       ),
     ),
@@ -110,7 +110,7 @@ class AppTheme {
       displayLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
       bodyLarge: TextStyle(fontSize: 16, color: Colors.white),
       bodyMedium: TextStyle(fontSize: 14, color: Colors.white70),
-      caption: TextStyle(fontSize: 12, color: Colors.white54),
+      bodySmall: TextStyle(fontSize: 12, color: Colors.white54),
     ),
     inputDecorationTheme: InputDecorationTheme(
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
