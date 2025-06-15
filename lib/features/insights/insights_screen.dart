@@ -45,7 +45,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> with SingleTick
         controller: _tabController,
         children: const [
           DoseHistoryScreen(),
-          AnalyticsScreen(),
+          InsightsScreen(), // Use InsightsScreen from analytics_screen.dart
         ],
       ),
     );
