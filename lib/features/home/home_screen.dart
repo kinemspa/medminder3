@@ -6,7 +6,8 @@ import '../../data/providers.dart';
 import '../../data/repositories/medication_repository.dart';
 import '../../data/repositories/dose_log_repository.dart';
 import '../medication/medication_screen.dart';
-import '../schedules/schedule_screen.dart';
+import '../medication/add_medication_screen.dart';
+import '../schedule/schedule_screen.dart';
 import '../supplies/supplies_screen.dart';
 import '../insights/insights_screen.dart';
 import '../settings/settings_screen.dart';
@@ -83,7 +84,7 @@ class HomeContent extends ConsumerWidget {
               children: [
                 const Text('No doses scheduled for today.'),
                 ElevatedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MedicationScreen())),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddMedicationScreen())),
                   child: const Text('Add Medication'),
                 ),
               ],
