@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../../core/constants.dart';
+import '../../../core/widgets/custom_integer_field.dart';
 import '../../../data/database/database.dart';
 import '../../../data/providers.dart';
 import '../../../data/repositories/medication_repository.dart';
@@ -106,13 +107,13 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Tablet')),
+      appBar: const CustomAppBar(title: 'Add Tablet'),
       body: Column(
         children: [
           if (_errorMessage != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+              child: Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
           Expanded(
             child: Stepper(
@@ -138,23 +139,20 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                   content: Column(
                     children: [
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Medication Name'),
+                        decoration: const InputDecoration(
+                          labelText: 'Medication Name',
+                          helperText: 'Enter the name of the tablet (e.g., Ibuprofen).',
+                        ),
                         onChanged: (value) => setState(() => _name = value),
                       ),
-                      TextField(
-                        decoration: const InputDecoration(labelText: 'Strength per Tablet'),
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          final val = double.tryParse(value) ?? 0.01;
-                          setState(() => _strength = val.clamp(AppConstants.minValue, AppConstants.maxValue));
-                        },
-                      ),
-                      DropdownButton<String>(
-                        value: _strengthUnit,
-                        onChanged: (value) => setState(() => _strengthUnit = value!),
-                        items: AppConstants.tabletStrengthUnits
-                            .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
-                            .toList(),
+                      CustomIntegerField(
+                        label: 'Strength per Tablet',
+                        helperText: 'Enter the strength of each tablet (e.g., 200 mg).',
+                        initialValue: _strength,
+                        unitOptions: AppConstants.tabletStrengthUnits,
+                        initialUnit: _strengthUnit,
+                        onChanged: (value) => setState(() => _strength = value),
+                        onUnitChanged: (unit) => setState(() => _strengthUnit = unit),
                       ),
                     ],
                   ),
@@ -163,24 +161,21 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                   title: const Text('Stock & Notifications'),
                   content: Column(
                     children: [
-                      TextField(
-                        decoration: const InputDecoration(labelText: 'Quantity (Tablets in Stock)'),
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          final val = double.tryParse(value) ?? 1.0;
-                          setState(() => _quantity = val.clamp(AppConstants.minValue, AppConstants.maxValue));
-                        },
+                      CustomIntegerField(
+                        label: 'Quantity (Tablets in Stock)',
+                        helperText: 'Enter the number of tablets in stock.',
+                        initialValue: _quantity,
+                        onChanged: (value) => setState(() => _quantity = value),
                       ),
-                      TextField(
-                        decoration: const InputDecoration(labelText: 'Low Stock Threshold (Tablets)'),
-                        keyboardType: TextInputType.number,
-                        onChanged: (value) {
-                          final val = double.tryParse(value) ?? AppConstants.defaultLowStockThreshold;
-                          setState(() => _lowStockThreshold = val.clamp(AppConstants.minValue, AppConstants.maxValue));
-                        },
+                      CustomIntegerField(
+                        label: 'Low Stock Threshold (Tablets)',
+                        helperText: 'Set the number of tablets remaining to trigger a reminder.',
+                        initialValue: _lowStockThreshold,
+                        onChanged: (value) => setState(() => _lowStockThreshold = value),
                       ),
                       CheckboxListTile(
                         title: const Text('Offer Refill Option'),
+                        subtitle: const Text('Include a refill prompt in low stock notifications.'),
                         value: _offerRefill,
                         onChanged: (value) => setState(() => _offerRefill = value!),
                       ),
@@ -190,6 +185,13 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                         items: ['default', 'urgent', 'silent']
                             .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
                             .toList(),
+                        isExpanded: true,
+                        hint: const Text('Select notification type'),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Choose the notification type: default (standard), urgent (high priority), or silent (no sound).',
+                        style: TextStyle(color: Colors.black54, fontSize: 12),
                       ),
                     ],
                   ),
@@ -200,38 +202,34 @@ class _TabletStepperState extends ConsumerState<TabletStepper> {
                     children: [
                       CheckboxListTile(
                         title: const Text('Set Reference Dose'),
+                        subtitle: const Text('Define a typical dose for this medication.'),
                         value: _addReferenceDose,
                         onChanged: (value) => setState(() => _addReferenceDose = value!),
                       ),
                       if (_addReferenceDose) ...[
-                        TextField(
-                          decoration: const InputDecoration(labelText: 'Reference Dose Strength'),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            final val = double.tryParse(value);
-                            setState(() {
-                              _referenceStrength = val;
-                              if (val != null && _strength > 0) {
-                                _referenceTablets = val / _strength;
-                              }
-                            });
-                          },
+                        CustomIntegerField(
+                          label: 'Reference Dose Strength',
+                          helperText: 'Enter the total strength for the dose (e.g., 400 mg).',
+                          initialValue: _referenceStrength ?? 0.01,
+                          unitOptions: AppConstants.tabletStrengthUnits,
+                          initialUnit: _strengthUnit,
+                          onChanged: (value) => setState(() {
+                            _referenceStrength = value;
+                            if (_strength > 0) {
+                              _referenceTablets = value / _strength;
+                            }
+                          }),
                         ),
-                        TextField(
-                          decoration: const InputDecoration(labelText: 'Number of Tablets'),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            final val = double.tryParse(value);
-                            setState(() {
-                              _referenceTablets = val;
-                              if (val != null && _strength > 0) {
-                                _referenceStrength = val * _strength;
-                              }
-                            });
-                          },
-                          controller: TextEditingController(
-                            text: _referenceTablets?.toStringAsFixed(2) ?? '',
-                          ),
+                        CustomIntegerField(
+                          label: 'Number of Tablets',
+                          helperText: 'Enter the number of tablets for the reference dose.',
+                          initialValue: _referenceTablets ?? 1.0,
+                          onChanged: (value) => setState(() {
+                            _referenceTablets = value;
+                            if (_strength > 0) {
+                              _referenceStrength = value * _strength;
+                            }
+                          }),
                         ),
                       ],
                     ],

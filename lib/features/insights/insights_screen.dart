@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/custom_app_bar.dart';
 import '../dose_history/dose_history_screen.dart';
 import '../analytics/analytics_screen.dart';
 
@@ -31,8 +32,8 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Insights'),
+      appBar: CustomAppBar(
+        title: 'Insights',
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -45,7 +46,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> with SingleTick
         controller: _tabController,
         children: const [
           DoseHistoryScreen(),
-          InsightsScreen(), // Use InsightsScreen from analytics_screen.dart
+          InsightsScreen(), // From analytics_screen.dart
         ],
       ),
     );

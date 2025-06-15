@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
+import '../../core/constants.dart';
+import '../../core/widgets/custom_app_bar.dart';
 import '../../data/database/database.dart';
+import '../../data/providers.dart';
 import '../../data/repositories/supply_repository.dart';
 
 class SuppliesScreen extends ConsumerWidget {
@@ -11,7 +14,7 @@ class SuppliesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final supplies = ref.watch(supplyRepositoryProvider).watchSupplies();
     return Scaffold(
-      appBar: AppBar(title: const Text('Supplies')),
+      appBar: const CustomAppBar(title: 'Supplies'),
       body: StreamBuilder(
         stream: supplies,
         builder: (context, AsyncSnapshot<List<Supply>> snapshot) {
@@ -25,21 +28,23 @@ class SuppliesScreen extends ConsumerWidget {
             itemCount: snapshot.data!.length,
             itemBuilder: (context, index) {
               final supply = snapshot.data![index];
-              return ListTile(
-                title: Text(supply.name),
-                subtitle: Text('Quantity: ${supply.quantity}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => showEditSupplyDialog(context, ref, supply),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () => ref.read(supplyRepositoryProvider).deleteSupply(supply.id),
-                    ),
-                  ],
+              return Card(
+                child: ListTile(
+                  title: Text(supply.name),
+                  subtitle: Text('Quantity: ${supply.quantity}, Threshold: ${supply.lowStockThreshold}'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () => showEditSupplyDialog(context, ref, supply),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () => ref.read(supplyRepositoryProvider).deleteSupply(supply.id),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -57,6 +62,7 @@ class SuppliesScreen extends ConsumerWidget {
 void showAddSupplyDialog(BuildContext context, WidgetRef ref) {
   String name = '';
   double quantity = 1.0;
+  double lowStockThreshold = ref.read(defaultLowStockThresholdProvider);
 
   showDialog(
     context: context,
@@ -74,6 +80,11 @@ void showAddSupplyDialog(BuildContext context, WidgetRef ref) {
             keyboardType: TextInputType.number,
             onChanged: (value) => quantity = double.tryParse(value) ?? 1.0,
           ),
+          TextField(
+            decoration: const InputDecoration(labelText: 'Low Stock Threshold'),
+            keyboardType: TextInputType.number,
+            onChanged: (value) => lowStockThreshold = double.tryParse(value) ?? AppConstants.defaultLowStockThreshold,
+          ),
         ],
       ),
       actions: [
@@ -83,10 +94,11 @@ void showAddSupplyDialog(BuildContext context, WidgetRef ref) {
         ),
         TextButton(
           onPressed: () {
-            if (name.isNotEmpty && quantity > 0) {
+            if (name.isNotEmpty && quantity > 0 && lowStockThreshold > 0) {
               final supply = SuppliesCompanion(
                 name: Value(name),
                 quantity: Value(quantity),
+                lowStockThreshold: Value(lowStockThreshold),
               );
               ref.read(supplyRepositoryProvider).addSupply(supply);
               Navigator.pop(context);
@@ -102,6 +114,7 @@ void showAddSupplyDialog(BuildContext context, WidgetRef ref) {
 void showEditSupplyDialog(BuildContext context, WidgetRef ref, Supply supply) {
   String name = supply.name;
   double quantity = supply.quantity;
+  double lowStockThreshold = supply.lowStockThreshold;
 
   showDialog(
     context: context,
@@ -121,6 +134,12 @@ void showEditSupplyDialog(BuildContext context, WidgetRef ref, Supply supply) {
             controller: TextEditingController(text: quantity.toString()),
             onChanged: (value) => quantity = double.tryParse(value) ?? 1.0,
           ),
+          TextField(
+            decoration: const InputDecoration(labelText: 'Low Stock Threshold'),
+            keyboardType: TextInputType.number,
+            controller: TextEditingController(text: lowStockThreshold.toString()),
+            onChanged: (value) => lowStockThreshold = double.tryParse(value) ?? AppConstants.defaultLowStockThreshold,
+          ),
         ],
       ),
       actions: [
@@ -130,10 +149,11 @@ void showEditSupplyDialog(BuildContext context, WidgetRef ref, Supply supply) {
         ),
         TextButton(
           onPressed: () {
-            if (name.isNotEmpty && quantity > 0) {
+            if (name.isNotEmpty && quantity > 0 && lowStockThreshold > 0) {
               final updatedSupply = SuppliesCompanion(
                 name: Value(name),
                 quantity: Value(quantity),
+                lowStockThreshold: Value(lowStockThreshold),
               );
               ref.read(supplyRepositoryProvider).updateSupply(supply.id, updatedSupply);
               Navigator.pop(context);

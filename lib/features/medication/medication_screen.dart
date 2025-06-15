@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/widgets/custom_app_bar.dart';
 import '../../data/database/database.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/medication_repository.dart';
@@ -12,8 +13,8 @@ class MedicationScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final medications = ref.watch(medicationRepositoryProvider).watchMedications();
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Medications'),
+      appBar: CustomAppBar(
+        title: 'Medications',
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -35,7 +36,8 @@ class MedicationScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('No medications added.'),
+                  const Text('To Get started, Add a medication.'),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => Navigator.push(
                       context,
@@ -52,7 +54,6 @@ class MedicationScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final med = snapshot.data![index];
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
                   title: Text(med.name),
                   subtitle: Text(
@@ -86,6 +87,13 @@ class MedicationScreen extends ConsumerWidget {
             },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AddMedicationScreen()),
+        ),
+        child: const Icon(Icons.add),
       ),
     );
   }

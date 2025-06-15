@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
+import '../../core/widgets/custom_app_bar.dart';
 import '../../data/database/database.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/medication_repository.dart';
@@ -39,8 +40,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('MedMinder3'),
+      appBar: CustomAppBar(
+        title: 'Home',
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -82,7 +83,8 @@ class HomeContent extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('No doses scheduled for today.'),
+                const Text('To Get started, Add a medication.'),
+                const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddMedicationScreen())),
                   child: const Text('Add Medication'),
@@ -107,7 +109,6 @@ class HomeContent extends ConsumerWidget {
                 final med = detailsSnapshot.data!['med'] as Medication;
                 final time = scheduledDose.postponedTo ?? scheduledDose.scheduledTime;
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: ListTile(
                     title: Text('${med.name} - ${dose.name}'),
                     subtitle: Text(
