@@ -6,12 +6,33 @@ import 'package:path/path.dart' as p;
 import 'models.dart';
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Medications, Doses, Schedules, Supplies, DoseLogs])
+@DriftDatabase(tables: [Medications, Doses, Schedules, Supplies, DoseLogs, ScheduledDoses])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2; // Increment schema version due to new table
+  int get schemaVersion => 3;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (Migrator m) async {
+      await m.createAll();
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      print('Migrating database from schema $from to $to');
+      if (from < 2) {
+        await m.addColumn(medications, medications.lowStockThreshold);
+        await m.addColumn(supplies, supplies.lowStockThreshold);
+      }
+      if (from < 3) {
+        await m.createTable(scheduledDoses);
+      }
+    },
+    beforeOpen: (details) async {
+      print('Opening database at schema version ${details.schemaVersion}'); // Fix: Use schemaVersion
+      await customStatement('PRAGMA foreign_keys = ON;');
+    },
+  );
 }
 
 QueryExecutor _openConnection() {
