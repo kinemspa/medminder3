@@ -29,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
       }
     },
     beforeOpen: (details) async {
-      print('Opening database at schema version ${details.schemaVersion}'); // Fix: Use schemaVersion
+      print('Opening database at schema version $schemaVersion');// Fix: Use schemaVersion
       await customStatement('PRAGMA foreign_keys = ON;');
     },
   );
